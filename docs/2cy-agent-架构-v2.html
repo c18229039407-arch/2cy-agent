@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2CY Agent · 四层骨架架构图（线稿版）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;700;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: oklch(100% 0 0);
+    --ink: oklch(22% 0.01 280);
+    --ink-2: oklch(42% 0 0);
+    --ink-3: oklch(50% 0 0);
+    --line: oklch(85% 0 0);
+    --vermilion: oklch(52% 0.185 30);
+    --vermilion-wash: oklch(52% 0.185 30 / 0.06);
+    --pencil: oklch(70% 0 0);
+    --npb: oklch(87% 0.05 230);
+    --font-display-cn: 'Zhi Mang Xing', 'Ma Shan Zheng', 'Noto Sans SC', sans-serif;
+    --font-display-lat: 'Dela Gothic One', 'Noto Sans SC', sans-serif;
+    --font-hand: 'Ma Shan Zheng', 'Noto Sans SC', serif;
+    --font-body: 'Noto Sans SC', system-ui, sans-serif;
+    /* 手绘抖动边框：四套圆角，轮换使用 */
+    --wobble-a: 255px 18px 230px 16px / 18px 240px 16px 255px;
+    --wobble-b: 20px 245px 18px 235px / 250px 16px 255px 18px;
+    --wobble-c: 240px 16px 255px 20px / 16px 250px 18px 240px;
+    --wobble-d: 18px 250px 20px 245px / 245px 18px 240px 16px;
+    --wobble-tag: 10px 140px 12px 130px / 130px 10px 140px 12px;
+    --wobble-tag2: 130px 12px 140px 10px / 12px 130px 10px 140px;
+    --hatch: repeating-linear-gradient(48deg, oklch(22% 0.01 280 / .5) 0 1px, transparent 1px 6px);
+    --ease-brush: cubic-bezier(.19, 1, .22, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--paper); }
+  body {
+    font-family: var(--font-body);
+    color: var(--ink);
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: clip;
+    /* 原稿用纸：水色方眼 */
+    background-image:
+      repeating-linear-gradient(to bottom, oklch(87% 0.05 230 / .38) 0 1px, transparent 1px 36px),
+      repeating-linear-gradient(to right, oklch(87% 0.05 230 / .38) 0 1px, transparent 1px 36px);
+  }
+  .page { position: relative; max-width: 1200px; margin: 0 auto; padding: clamp(24px, 4vw, 56px) clamp(18px, 4vw, 48px) 96px; }
+  /* 原稿用纸内枠 */
+  .page::before { content: ''; position: absolute; inset: 10px; border: 1.5px solid oklch(87% 0.05 230 / .85); pointer-events: none; }
+  /* 手写页边批注 */
+  .scribble { position: absolute; font-family: var(--font-display-cn); color: oklch(52% 0 0); font-size: 16px; line-height: 1.3; pointer-events: none; }
+
+  /* ============ 扉页 ============ */
+  .tobira {
+    position: relative;
+    border: none;
+    padding: clamp(36px, 6vw, 72px) clamp(24px, 5vw, 64px) clamp(40px, 6vw, 64px);
+    margin-bottom: clamp(40px, 6vw, 72px);
+    overflow: clip;
+  }
+  /* 集中线 */
+  .tobira::before {
+    content: '';
+    position: absolute; inset: -20%;
+    background: repeating-conic-gradient(from 0deg at 62% 38%, var(--ink) 0deg 0.3deg, transparent 0.3deg 4.6deg);
+    -webkit-mask-image: radial-gradient(ellipse 70% 70% at 62% 38%, transparent 30%, black 64%);
+    mask-image: radial-gradient(ellipse 70% 70% at 62% 38%, transparent 30%, black 64%);
+    opacity: .13;
+    pointer-events: none;
+    animation: shuuchuu 1100ms var(--ease-brush) both;
+  }
+  @keyframes shuuchuu { from { opacity: 0; transform: scale(1.08); } to { opacity: .13; transform: none; } }
+  /* 扉页墨线框（走粗糙滤镜） */
+  .frame { position: absolute; inset: 0; border: 3px solid var(--ink); pointer-events: none; filter: url(#rough-lg); }
+  .tobira-caption {
+    display: inline-block;
+    border: 2px solid var(--ink);
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    max-width: 34em;
+    background: var(--paper);
+    position: relative;
+    filter: url(#rough-sm);
+    animation: rise 700ms 80ms var(--ease-brush) both;
+  }
+  .tobira-title {
+    font-family: var(--font-display-lat);
+    font-size: clamp(2.5rem, 8vw, 5.25rem);
+    line-height: 1.04;
+    letter-spacing: -0.01em;
+    margin-top: clamp(20px, 4vw, 36px);
+    text-wrap: balance;
+    filter: url(#rough-lg);
+    animation: rise 800ms 160ms var(--ease-brush) both;
+  }
+  .tobira-sub {
+    font-family: var(--font-display-cn);
+    font-size: clamp(1.35rem, 3.4vw, 2.1rem);
+    margin-top: 10px;
+    letter-spacing: .04em;
+    animation: rise 700ms 280ms var(--ease-brush) both;
+  }
+  .tobira-lede {
+    margin-top: clamp(18px, 3vw, 28px);
+    max-width: 34em;
+    color: var(--ink-2);
+    font-size: 15px;
+    animation: rise 700ms 380ms var(--ease-brush) both;
+  }
+  .tobira-lede strong { color: var(--ink); }
+  /* 竖排刊记 */
+  .kanki {
+    position: absolute; top: 24px; right: 20px;
+    writing-mode: vertical-rl;
+    font-family: var(--font-hand);
+    font-size: 15px;
+    color: var(--ink-2);
+    letter-spacing: .18em;
+    animation: rise 700ms 460ms var(--ease-brush) both;
+  }
+  /* 印章 */
+  .seal {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-hand);
+    color: var(--vermilion);
+    border: 3px solid var(--vermilion);
+    border-radius: 6px;
+    outline: 1px solid var(--vermilion);
+    outline-offset: 2px;
+    line-height: 1;
+    padding: .28em .3em .22em;
+    background: var(--paper);
+    user-select: none;
+    filter: url(#rough-sm);
+  }
+  .tobira .seal {
+    position: absolute;
+    right: clamp(18px, 6vw, 72px); bottom: clamp(24px, 5vw, 48px);
+    font-size: clamp(22px, 3vw, 30px);
+    transform: rotate(-7deg);
+    animation: stamp 500ms 700ms var(--ease-brush) both;
+  }
+  @keyframes stamp { from { opacity: 0; transform: rotate(-7deg) scale(1.5); } to { opacity: 1; transform: rotate(-7deg) scale(1); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* ============ 主体：分镜 + 页边注 ============ */
+  .spread { display: grid; grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr); gap: clamp(28px, 4vw, 52px); align-items: start; }
+  .koma-stack { display: flex; flex-direction: column; gap: clamp(22px, 3vw, 34px); }
+
+  /* 分镜格 */
+  .koma {
+    position: relative;
+    border: none;
+    background: var(--paper);
+    padding: clamp(22px, 3.5vw, 36px) clamp(20px, 3.5vw, 36px) clamp(22px, 3vw, 30px);
+    transition: transform 320ms var(--ease-brush), box-shadow 320ms var(--ease-brush);
+  }
+  .koma:nth-child(1) { border-radius: var(--wobble-a); transform: rotate(-0.3deg); }
+  .koma:nth-child(2) { border-radius: var(--wobble-b); transform: rotate(0.25deg); }
+  .koma:nth-child(3) { border-radius: var(--wobble-c); transform: rotate(-0.2deg); }
+  .koma:nth-child(4) { border-radius: var(--wobble-d); transform: rotate(0.3deg); }
+  .koma:hover { transform: rotate(0deg) translateY(-2px); }
+  /* 墨线 + 铅笔底稿线 */
+  .koma::before {
+    content: '';
+    position: absolute; inset: 0;
+    border: 2.5px solid var(--ink);
+    border-radius: inherit;
+    outline: 1px solid var(--pencil);
+    outline-offset: 4px;
+    pointer-events: none;
+    filter: url(#rough-lg);
+  }
+  /* 排线角 */
+  .koma::after {
+    content: '';
+    position: absolute; top: 0; right: 0;
+    width: 34%; height: 46%;
+    background-image: var(--hatch);
+    -webkit-mask-image: radial-gradient(circle at 100% 0%, black 0%, transparent 72%);
+    mask-image: radial-gradient(circle at 100% 0%, black 0%, transparent 72%);
+    opacity: .16;
+    pointer-events: none;
+    transition: opacity 320ms var(--ease-brush);
+    border-radius: inherit;
+  }
+  .koma:nth-child(even)::after { right: auto; left: 0; top: auto; bottom: 0;
+    -webkit-mask-image: radial-gradient(circle at 0% 100%, black 0%, transparent 72%);
+    mask-image: radial-gradient(circle at 0% 100%, black 0%, transparent 72%); }
+  /* 联动命中态 */
+  .koma.is-hit { transform: rotate(0deg); box-shadow: 0 0 0 3px var(--paper), 0 0 0 5.5px var(--vermilion); }
+  .koma.is-hit::after { opacity: .34; }
+
+  .koma-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .koma-no {
+    font-family: var(--font-display-cn);
+    font-size: 17px;
+    border-bottom: 2px solid var(--ink);
+    white-space: nowrap;
+  }
+  .koma-name { font-family: var(--font-display-cn); font-size: clamp(1.75rem, 3.4vw, 2.25rem); letter-spacing: .05em; }
+  .koma-gloss { font-family: var(--font-display-lat); font-size: 11px; color: var(--ink-2); letter-spacing: .08em; }
+
+  /* 对话气泡：这一层自己开口说话 */
+  .fukidashi {
+    position: relative;
+    display: inline-block;
+    border: 2px solid var(--ink);
+    border-radius: 22px 26px 24px 28px / 26px 22px 28px 24px;
+    padding: 10px 20px 12px;
+    margin: 18px 0 6px 10px;
+    font-family: var(--font-display-cn);
+    font-weight: 400;
+    font-size: clamp(17px, 2vw, 20px);
+    letter-spacing: .02em;
+    background: var(--paper);
+    max-width: 30em;
+    filter: url(#rough-sm);
+  }
+  .fukidashi::before, .fukidashi::after {
+    content: ''; position: absolute; width: 0; height: 0;
+    border-style: solid;
+  }
+  .fukidashi::before { top: -15px; left: 30px; border-width: 0 7px 15px 12px; border-color: transparent transparent var(--ink) transparent; }
+  .fukidashi::after  { top: -10.5px; left: 32.5px; border-width: 0 5.5px 12px 9.5px; border-color: transparent transparent var(--paper) transparent; }
+  .koma-note { color: var(--ink-2); font-size: 13.5px; margin: 8px 0 16px 12px; max-width: 42em; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 10px 12px; }
+  .tag {
+    position: relative;
+    border: 2px solid var(--ink);
+    border-radius: var(--wobble-tag);
+    padding: 6px 14px 7px;
+    font-size: 14px;
+    background: var(--paper);
+    filter: url(#rough-sm);
+  }
+  .tag:nth-child(even) { border-radius: var(--wobble-tag2); transform: rotate(.4deg); }
+  .tag:nth-child(3n) { transform: rotate(-.5deg); }
+  .tag .mini { color: var(--ink-2); font-size: 12px; }
+  /* 壁垒印章盖在条目上 */
+  .tag .seal {
+    position: absolute; top: -14px; right: -12px;
+    font-size: 15px;
+    transform: rotate(9deg);
+    border-width: 2px;
+    padding: .22em .24em .16em;
+  }
+  .tag.is-sealed { border-color: var(--vermilion); font-weight: 700; margin-top: 8px; }
+
+  /* ============ 页边注：数据流 ============ */
+  .margin-notes { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 24px; }
+  .flow-group { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .flow-group:first-child { margin-top: 0; }
+  .flow-group svg { flex: none; }
+  .flow-group svg { filter: url(#rough-sm); }
+  .flow-group-name { font-family: var(--font-display-cn); font-size: 1.35rem; letter-spacing: .06em; }
+  .flow-group-name small { font-family: var(--font-body); font-weight: 400; font-size: 12px; color: var(--ink-2); margin-left: 8px; }
+  .flow-group::after { content: ''; flex: 1; border-top: 1.5px solid var(--pencil); filter: url(#rough-sm); }
+
+  .flow-note {
+    position: relative;
+    padding: 13px 16px 14px;
+    background: var(--paper);
+    cursor: pointer;
+    transition: transform 240ms var(--ease-brush);
+  }
+  .flow-note::before {
+    content: '';
+    position: absolute; inset: 0;
+    border: 1.5px solid var(--ink-3);
+    pointer-events: none;
+    filter: url(#rough-sm);
+    transition: border-color 240ms var(--ease-brush);
+  }
+  .flow-note:hover, .flow-note:focus-visible { transform: translateX(-3px); outline: none; }
+  .flow-note:hover::before, .flow-note:focus-visible::before { border-color: var(--ink); border-width: 2px; }
+  .flow-note.up:hover::before, .flow-note.up:focus-visible::before { border-color: var(--vermilion); }
+  .flow-path { font-size: 12.5px; font-weight: 900; letter-spacing: .02em; display: flex; align-items: center; gap: 7px; }
+  .flow-path .glyph { font-family: var(--font-display-lat); font-size: 14px; }
+  .flow-note.up .flow-path .glyph { color: var(--vermilion); }
+  .flow-note p { font-size: 13.5px; color: var(--ink-2); margin-top: 5px; }
+  .flow-note p strong { color: var(--ink); }
+
+  /* ============ 旁白框：架构洞察 ============ */
+  .insights-head { display: flex; align-items: center; gap: 14px; margin: clamp(48px, 7vw, 80px) 0 26px; }
+  .insights-head h2 { font-family: var(--font-display-cn); font-size: clamp(1.7rem, 3.2vw, 2.1rem); letter-spacing: .05em; white-space: nowrap; }
+  .insights-head::after { content: ''; flex: 1; border-top: 2.5px solid var(--ink); filter: url(#rough-lg); }
+  .insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(272px, 1fr)); gap: 22px; }
+  .naration {
+    position: relative;
+    border: none;
+    padding: 26px 24px 24px 30px;
+    background: var(--paper);
+  }
+  .naration::before {
+    content: '';
+    position: absolute; inset: 0;
+    border: 3px solid var(--ink);
+    pointer-events: none;
+    filter: url(#rough-lg);
+  }
+  .naration .char-seal {
+    position: absolute; top: -16px; left: -13px;
+    font-family: var(--font-hand);
+    font-size: 21px;
+    line-height: 1;
+    padding: .3em .32em .24em;
+    background: var(--paper);
+    border: 2.5px solid var(--ink);
+    border-radius: 5px;
+    transform: rotate(-8deg);
+    filter: url(#rough-sm);
+  }
+  .naration.moat .char-seal { color: var(--vermilion); border-color: var(--vermilion); outline: 1px solid var(--vermilion); outline-offset: 2px; }
+  .naration h3 { font-family: var(--font-display-cn); font-size: 1.45rem; letter-spacing: .04em; }
+  .naration .kind { font-family: var(--font-display-cn); font-size: 15px; color: var(--ink-2); letter-spacing: .05em; }
+  .naration p { font-size: 13.5px; color: var(--ink-2); margin-top: 10px; }
+  .naration p strong { color: var(--ink); }
+  .naration.moat { background: var(--vermilion-wash); }
+  .naration.moat::before { border-color: var(--vermilion); }
+
+  /* ============ 版权页 ============ */
+  .colophon {
+    margin-top: clamp(48px, 7vw, 72px);
+    border-top: 2px solid var(--ink);
+    padding-top: 18px;
+    display: flex; flex-wrap: wrap; gap: 8px 28px;
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .colophon .hand { font-family: var(--font-hand); font-size: 14px; }
+
+  /* ============ 滚动显现（js 门控，无 JS 时内容始终可见） ============ */
+  html.js .reveal { opacity: 0; transform: translateY(14px); }
+  html.js .reveal.is-in { opacity: 1; transform: none; transition: opacity 640ms var(--ease-brush), transform 640ms var(--ease-brush); }
+  html.js .koma.reveal.is-in { transform: none; }
+  html.js .koma.reveal:nth-child(1).is-in { transform: rotate(-0.3deg); }
+  html.js .koma.reveal:nth-child(2).is-in { transform: rotate(0.25deg); }
+  html.js .koma.reveal:nth-child(3).is-in { transform: rotate(-0.2deg); }
+  html.js .koma.reveal:nth-child(4).is-in { transform: rotate(0.3deg); }
+  html.js .koma.reveal.is-in:hover, html.js .koma.reveal.is-in.is-hit { transform: rotate(0deg); }
+
+  /* ============ 响应式 ============ */
+  @media (max-width: 1023px) {
+    .spread { grid-template-columns: 1fr; }
+    .margin-notes { position: static; }
+    .kanki { display: none; }
+    .tobira .scribble { display: none; }
+    .tobira .seal { position: static; display: inline-flex; margin-top: 20px; }
+  }
+  @media (max-width: 719px) {
+    body { line-height: 1.7; }
+    .koma-head { gap: 10px; }
+    .fukidashi { margin-left: 4px; }
+    .koma-note { margin-left: 6px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
+    html.js .reveal { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="rough-lg" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.6"/></filter>
+  <filter id="rough-sm" x="-8%" y="-8%" width="116%" height="116%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2"/></filter>
+</defs></svg>
+<div class="page">
+
+  <!-- ================= 扉页 ================= -->
+  <header class="tobira">
+    <i class="frame" aria-hidden="true"></i>
+    <p class="tobira-caption">开源·本地优先的 AI Agent：上传一张图，生成黑白线稿的「她」，替你干活，陪你说话。</p>
+    <h1 class="tobira-title">2CY AGENT</h1>
+    <p class="tobira-sub">四层骨架 · 产品架构图</p>
+    <p class="tobira-lede">生产力为骨、人设为皮。四个分镜自下而上互相支撑：<strong>触达</strong>依赖<strong>场景</strong>，场景依赖<strong>能力</strong>，能力依赖<strong>数据</strong>；而每一次使用，又沿着页边的箭头流回去。</p>
+    <span class="kanki">二〇二六年七月 · 创刊号 · 全一册</span>
+    <span class="scribble" aria-hidden="true" style="right: calc(clamp(18px, 6vw, 72px) + 110px); bottom: clamp(38px, 5vw, 62px); transform: rotate(-5deg);">盖章确认！→</span>
+    <span class="seal" aria-label="印章：开源">开源</span>
+  </header>
+
+  <!-- ================= 分镜 × 页边注 ================= -->
+  <main class="spread">
+
+    <div class="koma-stack">
+
+      <article class="koma reveal" id="layer-touch" aria-labelledby="t-touch">
+        <div class="koma-head">
+          <span class="koma-no">第 01 格</span>
+          <h2 class="koma-name" id="t-touch">触达层</h2>
+          <span class="koma-gloss">TOUCHPOINT</span>
+        </div>
+        <p class="fukidashi">电脑是主机，手机是延伸，GitHub 是入口。</p>
+        <p class="koma-note">本地优先的混合形态：Agent 与数据都在用户电脑上，手机与社区只是通向它的两条路。</p>
+        <div class="tags">
+          <span class="tag">桌面应用 <span class="mini">本地服务 + 内嵌 Web UI</span></span>
+          <span class="tag">手机 H5 远程接入 <span class="mini">配对码 / 可自托管中转</span></span>
+          <span class="tag">GitHub 开源仓库 <span class="mini">分发与社区入口</span></span>
+        </div>
+      </article>
+
+      <article class="koma reveal" id="layer-scene" aria-labelledby="t-scene">
+        <div class="koma-head">
+          <span class="koma-no">第 02 格</span>
+          <h2 class="koma-name" id="t-scene">场景层</h2>
+          <span class="koma-gloss">SCENARIO</span>
+        </div>
+        <p class="fukidashi">一个角色，两副面孔——既陪你聊，也替你干。</p>
+        <p class="koma-note">三个场景共享同一个角色：先共创出「她」，然后闲聊与干活都不出戏。</p>
+        <div class="tags">
+          <span class="tag">角色共创 <span class="mini">上传图 → 转线稿 → 角色卡微调</span></span>
+          <span class="tag">陪伴闲聊 <span class="mini">以角色人格日常互动</span></span>
+          <span class="tag">任务执行 <span class="mini">调工具、跑技能，完成真实任务</span></span>
+        </div>
+      </article>
+
+      <article class="koma reveal" id="layer-cap" aria-labelledby="t-cap">
+        <div class="koma-head">
+          <span class="koma-no">第 03 格</span>
+          <h2 class="koma-name" id="t-cap">能力层</h2>
+          <span class="koma-gloss">CAPABILITY</span>
+        </div>
+        <p class="fukidashi">人格注入 × 本地图像 × 可插拔工具运行时。</p>
+        <p class="koma-note">扩展接入下沉于此：MCP 与 Skill 不是场景，而是能力的可插拔来源。</p>
+        <div class="tags">
+          <span class="tag">BYOK 模型抽象层 <span class="mini">Claude / OpenAI 协议</span></span>
+          <span class="tag">人格注入引擎 <span class="mini">角色卡 → System Prompt</span></span>
+          <span class="tag">联网人设搜集 <span class="mini">Web 搜索 + 结构化抽取</span></span>
+          <span class="tag">线稿转换 <span class="mini">本地轻量模型 CPU 可跑 / SD 重绘可选</span></span>
+          <span class="tag">MCP 宿主 <span class="mini">stdio / HTTP</span></span>
+          <span class="tag">Skill 运行时 <span class="mini">链接 / skill.md 拉取加载</span></span>
+          <span class="tag">跨端同步与中转 <span class="mini">对话同步 + 本地工具降级</span></span>
+        </div>
+      </article>
+
+      <article class="koma reveal" id="layer-data" aria-labelledby="t-data">
+        <div class="koma-head">
+          <span class="koma-no">第 04 格</span>
+          <h2 class="koma-name" id="t-data">数据层</h2>
+          <span class="koma-gloss">DATA</span>
+        </div>
+        <p class="fukidashi">数据在用户设备，壁垒在社区仓库。</p>
+        <p class="koma-note">本地优先存储保隐私，社区角色卡库做跨用户沉淀，这是开源项目唯一带得走的数据资产。</p>
+        <div class="tags">
+          <span class="tag">用户上传图片 <span class="mini">形象源</span></span>
+          <span class="tag">公开角色百科 <span class="mini">萌娘百科 / Bangumi / Fandom</span></span>
+          <span class="tag">角色卡资产 <span class="mini">结构化人设 · 开放格式</span></span>
+          <span class="tag is-sealed">社区角色卡共享库 <span class="mini">GitHub 承载 · 一键导入</span><span class="seal" aria-label="印章：壁垒">壁垒</span></span>
+          <span class="tag">本地会话历史</span>
+          <span class="tag">MCP / Skill 配置与包</span>
+          <span class="tag">开放模型权重 <span class="mini">HuggingFace 首启拉取</span></span>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- 页边注 -->
+    <aside class="margin-notes" aria-label="数据流页边注">
+
+      <div class="flow-group">
+        <svg width="18" height="46" viewBox="0 0 18 46" aria-hidden="true"><path d="M9 3 C 7.4 14, 10.6 24, 9 33" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M3.5 30 L9 42 L14.5 30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="flow-group-name">沉淀<small>下层支撑上层</small></span>
+      </div>
+
+      <div class="flow-note reveal" tabindex="0" data-layers="layer-data,layer-cap,layer-scene">
+        <span class="flow-path"><span class="glyph">↓</span>数据 → 能力 → 场景</span>
+        <p><strong>公开角色百科</strong>经人设搜集与人格注入，变成共创场景里那张「会说话」的角色卡，干活闲聊都不出戏。</p>
+      </div>
+      <div class="flow-note reveal" tabindex="0" data-layers="layer-data,layer-cap">
+        <span class="flow-path"><span class="glyph">↓</span>数据 → 能力</span>
+        <p><strong>开放模型权重</strong>首启自动拉取，驱动本地线稿转换：任意彩图落成统一的黑白调性，CPU 即可运行。</p>
+      </div>
+      <div class="flow-note reveal" tabindex="0" data-layers="layer-data,layer-cap,layer-scene">
+        <span class="flow-path"><span class="glyph">↓</span>数据 → 能力 → 场景</span>
+        <p><strong>社区角色卡库</strong>一键导入进入共创场景，新用户零配置，直接获得社区调教成熟的角色。</p>
+      </div>
+
+      <div class="flow-group" style="color: var(--vermilion);">
+        <svg width="18" height="46" viewBox="0 0 18 46" aria-hidden="true"><path d="M9 43 C 10.6 32, 7.4 22, 9 13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M3.5 16 L9 4 L14.5 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="flow-group-name" style="color: var(--ink);">回流<small>使用反哺下层</small></span>
+      </div>
+
+      <div class="flow-note up reveal" tabindex="0" data-layers="layer-scene,layer-data">
+        <span class="flow-path"><span class="glyph">↑</span>场景 → 数据</span>
+        <p><strong>用户微调后的角色卡</strong>从共创场景回流社区共享库：越多人用，库越丰富，生态越厚。</p>
+      </div>
+      <div class="flow-note up reveal" tabindex="0" data-layers="layer-scene,layer-data,layer-cap">
+        <span class="flow-path"><span class="glyph">↑</span>场景 → 数据 → 能力</span>
+        <p><strong>对话中的纠偏</strong>（口癖跑偏、性格失真被用户修正）迭代角色卡，反哺人格注入，扮演越来越准。</p>
+      </div>
+      <div class="flow-note up reveal" tabindex="0" data-layers="layer-touch,layer-data">
+        <span class="flow-path"><span class="glyph">↑</span>触达 → 数据</span>
+        <p><strong>GitHub 社区</strong>以 PR 形式回流 Skill、MCP 配置与角色卡：开源入口同时是数据资产的进水口。</p>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- ================= 旁白：架构洞察 ================= -->
+  <section aria-labelledby="insights-title">
+    <div class="insights-head"><h2 id="insights-title">架构旁白</h2></div>
+    <div class="insights">
+      <div class="naration moat reveal">
+        <span class="scribble" aria-hidden="true" style="right: 8px; top: -28px; transform: rotate(2deg);">护城河在这里！！</span>
+        <span class="char-seal" aria-hidden="true">壁</span>
+        <span class="kind">最有壁垒</span>
+        <h3>数据层 · 社区角色卡库</h3>
+        <p>本地优先架构下，它是<strong>唯一能跨用户沉淀的资产</strong>。角色卡随使用不断调准并回流：fork 拿得走代码，<strong>拿不走生态</strong>。GitHub 承载即可，成本极低而复利极高。</p>
+      </div>
+      <div class="naration reveal">
+        <span class="char-seal" aria-hidden="true">危</span>
+        <span class="kind">最易替代</span>
+        <h3>能力层 · BYOK 模型底座</h3>
+        <p>对话与工具调用来自第三方大模型，线稿转换用的是开放权重，<strong>任何同类产品都能拿到同款底座</strong>。防御必须建在上面的场景体验和下面的数据生态。</p>
+      </div>
+      <div class="naration reveal">
+        <span class="char-seal" aria-hidden="true">赌</span>
+        <span class="kind">最值得押注</span>
+        <h3>场景层 · 角色共创首体验</h3>
+        <p>「上传任意一张图 → 三分钟后她开口说话」是天然的<strong>传播引爆点</strong>。转线稿质量与人设搜集准确度的打磨深度，直接决定开源冷启动的成败。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 版权页 ================= -->
+  <footer class="colophon">
+    <span class="hand">方法：四层骨架</span>
+    <span>悬停或聚焦页边注，可点亮它连接的分镜格</span>
+    <span>字体：Dela Gothic One / Zhi Mang Xing 行书 / 马善政楷体 / 思源黑体</span>
+    <span>2CY Agent · 第 001 号</span>
+  </footer>
+
+</div>
+
+<script>
+  document.documentElement.classList.add('js');
+
+  // 滚动显现：无 JS 时内容默认可见，故不会有空白段落
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -6% 0px' });
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+  // 签名交互：页边注 ↔ 分镜格联动
+  document.querySelectorAll('.flow-note').forEach((note) => {
+    const ids = (note.dataset.layers || '').split(',').filter(Boolean);
+    const on = () => ids.forEach((id) => document.getElementById(id)?.classList.add('is-hit'));
+    const off = () => ids.forEach((id) => document.getElementById(id)?.classList.remove('is-hit'));
+    note.addEventListener('mouseenter', on);
+    note.addEventListener('mouseleave', off);
+    note.addEventListener('focus', on);
+    note.addEventListener('blur', off);
+  });
+</script>
+</body>
+</html>

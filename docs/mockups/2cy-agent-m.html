@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2CY Agent · 手机端</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;700;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: oklch(100% 0 0);
+    --ink: oklch(22% 0.01 280);
+    --ink-soft: oklch(42% 0 0);
+    --ink-faint: oklch(50% 0 0);
+    --pencil: oklch(70% 0 0);
+    --vermilion: oklch(52% 0.185 30);
+    --soul: oklch(70% 0.12 210);
+    --hover-wash: oklch(97% 0 0);
+    --font-hand: 'Zhi Mang Xing', 'Ma Shan Zheng', 'Noto Sans SC', sans-serif;
+    --font-seal: 'Ma Shan Zheng', 'Noto Sans SC', serif;
+    --font-logo: 'Dela Gothic One', 'Noto Sans SC', sans-serif;
+    --font-body: 'Noto Sans SC', system-ui, sans-serif;
+    --ease: cubic-bezier(.19, 1, .22, 1);
+    --wobble-tag: 10px 140px 12px 130px / 130px 10px 140px 12px;
+    --wobble-frame: 18px 250px 20px 245px / 245px 18px 240px 16px;
+    --bubble: 22px 26px 24px 28px / 26px 22px 28px 24px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    color: var(--ink);
+    background: var(--paper);
+    background-image:
+      repeating-linear-gradient(to bottom, oklch(87% 0.05 230 / .22) 0 1px, transparent 1px 36px),
+      repeating-linear-gradient(to right, oklch(87% 0.05 230 / .22) 0 1px, transparent 1px 36px);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* H5 页面本体：手机全宽，大屏居中成一条稿纸 */
+  .m {
+    max-width: 520px; margin: 0 auto; position: relative;
+    min-height: 100vh; min-height: 100dvh;
+    background: var(--paper);
+    display: flex; flex-direction: column;
+  }
+  @media (min-width: 560px) {
+    .m::before, .m::after { content: ''; position: absolute; top: 0; bottom: 0; border-left: 1.5px solid var(--pencil); filter: url(#rough-sm); }
+    .m::before { left: -14px; }
+    .m::after { right: -14px; border-left: none; border-right: 1.5px solid var(--pencil); }
+  }
+
+  .screen { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  .screen.is-open { display: flex; animation: in 220ms var(--ease); }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ============ 配对屏 ============ */
+  .pair { padding: 40px 26px 48px; }
+  .pair .logo { font-family: var(--font-logo); font-size: .875rem; }
+  .pair-title { font-family: var(--font-hand); font-size: 1.7rem; font-weight: 400; letter-spacing: .05em; margin-top: 40px; }
+  .pair-sub { font-size: .875rem; color: var(--ink-soft); margin-top: 10px; max-width: 26em; line-height: 1.75; }
+  .pair-sub strong { font-weight: 900; }
+  .code-row { margin-top: 32px; }
+  .code-input {
+    width: 100%; max-width: 300px;
+    font-family: var(--font-body); font-weight: 900;
+    font-size: 1.75rem; letter-spacing: .42em; text-align: center; text-indent: .42em;
+    color: var(--ink); background: var(--paper);
+    border: 2px solid var(--ink); padding: 14px 10px;
+  }
+  .code-input:focus { outline: 1px solid var(--pencil); outline-offset: 4px; }
+  .code-input::placeholder { color: var(--pencil); font-weight: 400; }
+  .pair-actions { display: flex; align-items: center; gap: 16px; margin-top: 22px; flex-wrap: wrap; }
+  .btn {
+    font-family: var(--font-body); font-size: .875rem; font-weight: 700; color: var(--ink);
+    background: var(--paper); border: 2px solid var(--ink); padding: 10px 20px; cursor: pointer;
+    border-radius: var(--wobble-tag); filter: url(#rough-sm);
+    transition: background 180ms var(--ease), transform 180ms var(--ease);
+  }
+  .btn:hover { background: var(--hover-wash); }
+  .btn:active { transform: scale(.97); }
+  .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .btn[disabled] { color: var(--pencil); border-color: var(--pencil); cursor: not-allowed; }
+  .btn-link { background: none; border: none; font-size: .875rem; color: var(--ink-soft); cursor: pointer; padding: 6px 2px; text-decoration: underline; text-underline-offset: 3px; }
+  .btn-link:hover { color: var(--ink); }
+  .btn-link:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .handshake { margin-top: 30px; display: none; flex-direction: column; gap: 10px; max-width: 340px; }
+  .handshake.is-on { display: flex; }
+  .work-line { position: relative; display: flex; align-items: baseline; gap: 9px; padding: 9px 13px 10px; font-size: .875rem; color: var(--ink-faint); background: var(--paper); }
+  .work-line::before { content: ''; position: absolute; inset: 0; border: 1.5px dashed var(--pencil); pointer-events: none; filter: url(#rough-sm); }
+  .work-line .glyph { font-weight: 900; flex: none; }
+  .work-line .result { margin-left: auto; font-size: .78rem; white-space: nowrap; padding-left: 10px; }
+  .work-line.is-running { color: var(--ink-soft); }
+  .work-line.is-running .dots i { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--ink-soft); margin-right: 3px; animation: pulse 1.2s ease-in-out infinite; }
+  .work-line.is-running .dots i:nth-child(2) { animation-delay: .2s; }
+  .work-line.is-running .dots i:nth-child(3) { animation-delay: .4s; }
+  .work-line.is-done { color: var(--ink); }
+  .work-line.is-done::before { border-style: solid; border-color: var(--ink); }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+  .pair-foot { margin-top: auto; padding-top: 40px; font-size: .78rem; color: var(--ink-faint); line-height: 1.8; }
+
+  /* ============ 对话屏 ============ */
+  .chat-screen { min-height: 100vh; min-height: 100dvh; }
+  .m-top {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; position: relative; background: var(--paper);
+    flex: none;
+  }
+  .m-top::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; border-bottom: 2px solid var(--ink); filter: url(#rough-sm); }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--ink); overflow: hidden; background: var(--paper); flex: none; }
+  .avatar svg { display: block; width: 100%; height: 100%; }
+  .who { min-width: 0; }
+  .who .name { font-family: var(--font-seal); font-size: 1.2rem; line-height: 1.1; }
+  .who .ep { font-size: .72rem; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .presence { width: 8px; height: 8px; border-radius: 50%; background: var(--soul); flex: none; }
+  .presence.is-busy { animation: pulse 1.2s ease-in-out infinite; }
+  .host-chip {
+    margin-left: auto; flex: none;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: .78rem; font-weight: 700; color: var(--ink-soft);
+    background: var(--paper); border: 1.5px solid var(--pencil);
+    padding: 6px 11px; cursor: pointer;
+    transition: border-color 180ms var(--ease);
+  }
+  .host-chip:hover { border-color: var(--ink); }
+  .host-chip:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot.on { background: var(--ink); }
+  .dot.off { background: var(--paper); border: 1.5px solid var(--ink-faint); }
+
+  /* 离线横幅 */
+  .offline-note {
+    display: none;
+    position: relative;
+    margin: 12px 16px 0;
+    padding: 9px 14px 10px;
+    font-size: .78rem; color: var(--ink-soft);
+    background: var(--paper);
+  }
+  .offline-note::before { content: ''; position: absolute; inset: 0; border: 1.5px dashed var(--pencil); pointer-events: none; filter: url(#rough-sm); }
+  .offline-note.is-on { display: block; }
+  .offline-note strong { font-weight: 900; color: var(--ink); }
+
+  .m-chat { flex: 1; overflow-y: auto; padding: 18px 16px 10px; }
+  .sync-line { text-align: center; font-size: .72rem; color: var(--ink-faint); margin-bottom: 14px; }
+  .day-rule { display: flex; align-items: center; gap: 12px; margin: 4px 0 18px; color: var(--pencil); font-family: var(--font-hand); font-size: .95rem; }
+  .day-rule::before, .day-rule::after { content: ''; flex: 1; border-top: 1px solid var(--pencil); }
+
+  .msg { margin-bottom: 16px; animation: in 200ms var(--ease); }
+  .msg-user { display: flex; justify-content: flex-end; }
+  .msg-user .box { max-width: 84%; border: 2px solid var(--ink); padding: 9px 14px 11px; background: var(--paper); line-height: 1.7; }
+  .msg-her { display: flex; gap: 12px; align-items: flex-start; }
+  .msg-avatar { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--ink); overflow: hidden; background: var(--paper); flex: none; margin-top: 2px; }
+  .msg-avatar svg { display: block; width: 100%; height: 100%; }
+  .msg-body { min-width: 0; flex: 1; }
+  .her-line { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+  .her-line .name { font-family: var(--font-seal); font-size: .95rem; }
+  .msg-her .bubble {
+    position: relative; display: inline-block; max-width: 88%;
+    border: 2px solid var(--ink); border-radius: var(--bubble);
+    padding: 9px 16px 11px;
+    background: var(--paper);
+    font-family: var(--font-seal); font-size: 1.2rem; letter-spacing: .04em; line-height: 1.65;
+    filter: url(#rough-sm);
+  }
+  .msg-her .bubble::before { content: ''; position: absolute; top: 14px; left: -14px; border: solid transparent; border-width: 7px 15px 10px 0; border-right-color: var(--ink); }
+  .msg-her .bubble::after { content: ''; position: absolute; top: 16.5px; left: -10px; border: solid transparent; border-width: 5px 12px 7.5px 0; border-right-color: var(--paper); }
+  .msg-her .sheet { max-width: 94%; border: 1.5px solid var(--ink); background: var(--paper); }
+  .sheet-head { font-size: .78rem; font-weight: 900; color: var(--ink-soft); letter-spacing: .04em; padding: 7px 14px; border-bottom: 1px solid var(--pencil); }
+  .sheet-body { padding: 12px 15px 14px; line-height: 1.75; font-size: .95rem; }
+  .tool-note {
+    display: inline-flex; align-items: baseline; gap: 8px;
+    position: relative;
+    font-size: .78rem; color: var(--ink-soft);
+    padding: 6px 12px 7px; margin: 0 0 16px 2px;
+    background: var(--paper);
+  }
+  .tool-note::before { content: ''; position: absolute; inset: 0; border: 1.5px solid var(--pencil); pointer-events: none; filter: url(#rough-sm); }
+  .tool-note .glyph { font-weight: 900; color: var(--ink); }
+  .tool-note.is-queued::before { border-style: dashed; }
+  .tool-note .state { color: var(--ink-faint); }
+  .thinking { display: inline-flex; align-items: center; gap: 10px; }
+  .thinking .dots i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); margin-right: 2px; animation: pulse 1.2s ease-in-out infinite; }
+  .thinking .dots i:nth-child(2) { animation-delay: .2s; }
+  .thinking .dots i:nth-child(3) { animation-delay: .4s; }
+  .thinking .hint { font-family: var(--font-seal); font-size: .95rem; color: var(--ink-faint); }
+
+  .m-composer { flex: none; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); }
+  .composer-row { display: flex; gap: 12px; }
+  .composer-box { flex: 1; position: relative; }
+  .m-composer textarea {
+    width: 100%; min-height: 50px; max-height: 130px; resize: none;
+    font-family: var(--font-body); font-size: 1rem; line-height: 1.6; color: var(--ink);
+    background: var(--paper); border: 2px solid var(--ink);
+    padding: 12px 12px 12px 40px; display: block;
+  }
+  .m-composer textarea:focus { outline: 1px solid var(--pencil); outline-offset: 3px; }
+  .m-composer textarea::placeholder { color: var(--ink-faint); }
+  .attach { position: absolute; left: 7px; top: 11px; width: 28px; height: 28px; background: none; border: none; cursor: pointer; color: var(--ink-soft); display: grid; place-items: center; }
+  .attach::before { content: ''; position: absolute; inset: -8px; }
+  .attach:hover { color: var(--ink); }
+  .attach:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .seal-send {
+    font-family: var(--font-seal); font-size: 1.5rem; line-height: 1;
+    color: var(--vermilion);
+    width: 50px; height: 50px; align-self: flex-end; flex: none;
+    background: var(--paper);
+    border: 3px solid var(--vermilion); border-radius: 6px;
+    outline: 1px solid var(--vermilion); outline-offset: 2px;
+    cursor: pointer; transform: rotate(-3deg);
+    filter: url(#rough-sm);
+    transition: transform 180ms var(--ease);
+  }
+  .seal-send:hover:not(:disabled) { transform: rotate(0deg); }
+  .seal-send:active:not(:disabled) { transform: rotate(0deg) scale(.93); }
+  .seal-send:focus-visible { box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--ink); }
+  .seal-send:disabled { color: var(--pencil); border-color: var(--pencil); outline-color: var(--pencil); cursor: not-allowed; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="rough-sm" x="-8%" y="-8%" width="116%" height="116%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2"/></filter>
+  <!-- 头像：线稿头部特写 -->
+  <g id="head-ink">
+    <path d="M120 34 C74 34 50 66 52 104 C53 128 60 144 56 176 L84 162 L84 118 C84 92 100 76 120 76 C140 76 156 92 156 118 L156 162 L184 176 C180 144 187 128 188 104 C190 66 166 34 120 34 Z" fill="oklch(22% 0.01 280)"/>
+    <circle cx="180" cy="64" r="13" fill="oklch(22% 0.01 280)"/>
+    <path d="M84 118 C84 92 100 76 120 76 C140 76 156 92 156 118 C156 142 144 166 120 168 C96 166 84 142 84 118 Z" fill="#fff" stroke="oklch(22% 0.01 280)" stroke-width="2.4"/>
+    <path d="M84 116 C82 84 100 70 120 70 C140 70 158 84 156 116 L148 104 L142 116 L134 100 L126 114 L118 98 L110 114 L102 102 L94 116 L88 106 Z" fill="oklch(22% 0.01 280)"/>
+    <path d="M94 128 C98 124 108 124 112 128" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="3.6" stroke-linecap="round"/>
+    <path d="M128 128 C132 124 142 124 146 128" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="3.6" stroke-linecap="round"/>
+    <circle cx="103" cy="133" r="6.4" fill="oklch(70% 0.12 210)" stroke="oklch(22% 0.01 280)" stroke-width="1.6"/>
+    <circle cx="137" cy="133" r="6.4" fill="oklch(70% 0.12 210)" stroke="oklch(22% 0.01 280)" stroke-width="1.6"/>
+    <circle cx="103" cy="133" r="2.6" fill="oklch(22% 0.01 280)"/>
+    <circle cx="137" cy="133" r="2.6" fill="oklch(22% 0.01 280)"/>
+    <circle cx="101" cy="130.5" r="1.6" fill="#fff"/>
+    <circle cx="135" cy="130.5" r="1.6" fill="#fff"/>
+    <path d="M112 156 C117 161 123 161 128 156" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+</defs></svg>
+
+<div class="m">
+
+  <!-- ============ 配对屏 ============ -->
+  <section class="screen pair is-open" id="pairScreen" aria-label="配对">
+    <span class="logo">2CY AGENT</span>
+    <h1 class="pair-title">跟主机对个暗号。</h1>
+    <p class="pair-sub">在电脑端打开 <strong>配对手机</strong>，把那六位暗号填进来。对话经由中转同步，中转可以自托管。</p>
+    <div class="code-row">
+      <input class="code-input" id="codeInput" inputmode="numeric" maxlength="6" placeholder="○○○○○○" aria-label="六位配对暗号">
+    </div>
+    <div class="pair-actions">
+      <button class="btn" id="pairBtn" type="button" disabled>对上暗号</button>
+      <button class="btn-link" id="demoCode" type="button">用示例暗号 240702</button>
+    </div>
+    <div class="handshake" id="handshake" aria-live="polite">
+      <div class="work-line" data-line="code"><span class="glyph">↓</span>核对暗号<span class="dots"><i></i><i></i><i></i></span><span class="result"></span></div>
+      <div class="work-line" data-line="relay"><span class="glyph">↓</span>接通中转<span class="dots"><i></i><i></i><i></i></span><span class="result"></span></div>
+      <div class="work-line" data-line="sync"><span class="glyph">↓</span>同步回目<span class="dots"><i></i><i></i><i></i></span><span class="result"></span></div>
+    </div>
+    <p class="pair-foot">暗号只在本次配对使用 · 对话内容存在你的电脑上，中转只负责传输。</p>
+  </section>
+
+  <!-- ============ 对话屏 ============ -->
+  <section class="screen chat-screen" id="chatScreen" aria-label="对话">
+    <header class="m-top">
+      <span class="avatar" aria-hidden="true"><svg viewBox="30 20 180 180"><use href="#head-ink"/></svg></span>
+      <div class="who">
+        <div class="name">蕾塞</div>
+        <div class="ep">第 3 话 · 帮我把 PRD 翻成英文</div>
+      </div>
+      <span class="presence" id="herPresence" aria-hidden="true"></span>
+      <button class="host-chip" id="hostChip" type="button" aria-pressed="false" aria-label="主机状态：在线，点按演示离线">
+        <span class="dot on" id="hostDot"></span><span id="hostLabel">主机在线</span>
+      </button>
+    </header>
+
+    <div class="offline-note" id="offlineNote" role="status">
+      <strong>主机离线。</strong>聊天照常，要动电脑的活儿会排队，主机一上线就跑。
+    </div>
+
+    <div class="m-chat" id="mChat" role="log" aria-live="polite">
+      <p class="sync-line">已同步自主机 · 刚刚</p>
+      <div class="day-rule">七月二日</div>
+      <div class="msg msg-user"><div class="box">帮我把 PRD.md 的核心定位翻成英文，要放进 GitHub README 的开头。</div></div>
+      <div class="tool-note"><span class="glyph">↓</span> 读取 PRD.md<span class="state">· 3.2k 字 · 在主机执行</span></div>
+      <div class="msg msg-her">
+        <span class="msg-avatar" aria-hidden="true"><svg viewBox="30 20 180 180"><use href="#head-ink"/></svg></span>
+        <div class="msg-body">
+          <div class="her-line"><span class="presence"></span><span class="name">蕾塞</span></div>
+          <div class="sheet">
+            <div class="sheet-head">打印稿 · README 开头段</div>
+            <div class="sheet-body"><strong>2CY Agent</strong> — an open-source, local-first AI agent. Upload any image and it becomes your own black-and-white line-art character…</div>
+          </div>
+        </div>
+      </div>
+      <div class="msg msg-her">
+        <span class="msg-avatar" aria-hidden="true"><svg viewBox="30 20 180 180"><use href="#head-ink"/></svg></span>
+        <div class="msg-body">
+          <div class="her-line"><span class="presence"></span><span class="name">蕾塞</span></div>
+          <div class="bubble">你出门了？接着聊，我都在。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="m-composer">
+      <form class="composer-row" id="composerForm">
+        <div class="composer-box">
+          <button class="attach" type="button" aria-label="上传图片（转线稿）">
+            <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5 L8 13.5 M2.5 8 L13.5 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <textarea id="composerInput" rows="1" placeholder="写下这一格的台词……" aria-label="消息输入"></textarea>
+        </div>
+        <button class="seal-send" id="sendBtn" type="submit" disabled aria-label="发送">送</button>
+      </form>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // ---- 配对 ----
+  const codeInput = document.getElementById('codeInput');
+  const pairBtn = document.getElementById('pairBtn');
+  codeInput.addEventListener('input', () => {
+    codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
+    pairBtn.disabled = codeInput.value.length !== 6;
+  });
+  document.getElementById('demoCode').addEventListener('click', () => {
+    codeInput.value = '240702';
+    pairBtn.disabled = false;
+    codeInput.focus();
+  });
+
+  async function runLine(line, ms, result) {
+    line.classList.add('is-running');
+    await wait(ms);
+    line.classList.remove('is-running');
+    line.classList.add('is-done');
+    line.querySelector('.dots')?.remove();
+    line.querySelector('.result').textContent = result;
+  }
+
+  document.getElementById('pairBtn').addEventListener('click', async () => {
+    pairBtn.disabled = true;
+    const hs = document.getElementById('handshake');
+    hs.classList.add('is-on');
+    await runLine(hs.querySelector('[data-line="code"]'), 700, '对上了');
+    await runLine(hs.querySelector('[data-line="relay"]'), 800, '可自托管');
+    await runLine(hs.querySelector('[data-line="sync"]'), 700, '3 话');
+    await wait(350);
+    document.getElementById('pairScreen').classList.remove('is-open');
+    document.getElementById('chatScreen').classList.add('is-open');
+    document.getElementById('composerInput').focus();
+  });
+
+  // ---- 主机状态（点按演示在线/离线） ----
+  let hostOnline = true;
+  const hostChip = document.getElementById('hostChip');
+  hostChip.addEventListener('click', () => {
+    hostOnline = !hostOnline;
+    document.getElementById('hostDot').className = 'dot ' + (hostOnline ? 'on' : 'off');
+    document.getElementById('hostLabel').textContent = hostOnline ? '主机在线' : '主机离线';
+    hostChip.setAttribute('aria-pressed', String(!hostOnline));
+    hostChip.setAttribute('aria-label', '主机状态：' + (hostOnline ? '在线' : '离线') + '，点按切换演示');
+    document.getElementById('offlineNote').classList.toggle('is-on', !hostOnline);
+  });
+
+  // ---- 发送 ----
+  const input = document.getElementById('composerInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const form = document.getElementById('composerForm');
+  const chat = document.getElementById('mChat');
+  const needsHost = (t) => /文件|读|写|截图|桌面|电脑|打开|运行|转线稿/.test(t);
+
+  input.addEventListener('input', () => { sendBtn.disabled = input.value.trim() === ''; });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+
+    const u = document.createElement('div');
+    u.className = 'msg msg-user';
+    u.innerHTML = '<div class="box"></div>';
+    u.querySelector('.box').textContent = text;
+    chat.appendChild(u);
+    input.value = '';
+    sendBtn.disabled = true;
+    chat.scrollTop = chat.scrollHeight;
+
+    const wantsHost = needsHost(text);
+
+    if (!hostOnline && wantsHost) {
+      const note = document.createElement('div');
+      note.className = 'tool-note is-queued';
+      note.innerHTML = '<span class="glyph">↓</span> 需要主机的活儿<span class="state">· 已排队 · 等主机上线</span>';
+      chat.appendChild(note);
+    }
+
+    const t = document.createElement('div');
+    t.className = 'msg msg-her';
+    t.innerHTML = '<span class="msg-avatar" aria-hidden="true"><svg viewBox="30 20 180 180"><use href="#head-ink"/></svg></span>'
+      + '<div class="msg-body"><div class="her-line"><span class="presence is-busy"></span><span class="name">蕾塞</span></div>'
+      + '<div class="bubble thinking"><span class="dots"><i></i><i></i><i></i></span><span class="hint">作画中……</span></div></div>';
+    chat.appendChild(t);
+    chat.scrollTop = chat.scrollHeight;
+
+    await wait(1300);
+    let reply;
+    if (!hostOnline && wantsHost) reply = '电脑不在线。这活儿我记在待办上了，主机一开机就跑，先聊点别的？';
+    else if (!hostOnline) reply = '嗯，这儿聊没问题。要动电脑的活儿才需要等主机。';
+    else reply = '收到。这一格交给我。';
+    t.querySelector('.bubble').outerHTML = '<div class="bubble">' + reply + '</div>';
+    chat.scrollTop = chat.scrollHeight;
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2CY Agent · 新角色登场</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;700;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: oklch(100% 0 0);
+    --ink: oklch(22% 0.01 280);
+    --ink-soft: oklch(42% 0 0);
+    --ink-faint: oklch(50% 0 0);
+    --pencil: oklch(70% 0 0);
+    --vermilion: oklch(52% 0.185 30);
+    --vermilion-wash: oklch(52% 0.185 30 / 0.06);
+    --soul: oklch(70% 0.12 210);
+    --hover-wash: oklch(97% 0 0);
+    --font-hand: 'Zhi Mang Xing', 'Ma Shan Zheng', 'Noto Sans SC', sans-serif;
+    --font-seal: 'Ma Shan Zheng', 'Noto Sans SC', serif;
+    --font-logo: 'Dela Gothic One', 'Noto Sans SC', sans-serif;
+    --font-body: 'Noto Sans SC', system-ui, sans-serif;
+    --ease: cubic-bezier(.19, 1, .22, 1);
+    --wobble-tag: 10px 140px 12px 130px / 130px 10px 140px 12px;
+    --wobble-frame: 18px 250px 20px 245px / 245px 18px 240px 16px;
+    --bubble: 22px 26px 24px 28px / 26px 22px 28px 24px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    color: var(--ink);
+    background: var(--paper);
+    background-image:
+      repeating-linear-gradient(to bottom, oklch(87% 0.05 230 / .22) 0 1px, transparent 1px 36px),
+      repeating-linear-gradient(to right, oklch(87% 0.05 230 / .22) 0 1px, transparent 1px 36px);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  /* ============ 顶栏 ============ */
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 14px 22px; position: relative; max-width: 960px; margin: 0 auto; }
+  .topbar::after { content: ''; position: absolute; left: 22px; right: 22px; bottom: 0; border-bottom: 2px solid var(--ink); filter: url(#rough-sm); }
+  .logo { font-family: var(--font-logo); font-size: .875rem; }
+  .page-name { font-family: var(--font-hand); font-size: 1.2rem; }
+  .back { margin-left: auto; font-size: .875rem; color: var(--ink-soft); text-decoration: none; }
+  .back:hover { color: var(--ink); text-decoration: underline; }
+
+  .stage { max-width: 960px; margin: 0 auto; padding: 26px 22px 80px; }
+
+  /* ============ 工序条 ============ */
+  .steps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 30px; }
+  .step-pill { display: flex; align-items: baseline; gap: 7px; padding: 6px 12px 7px; color: var(--ink-faint); }
+  .step-pill .no { font-family: var(--font-hand); font-size: .95rem; }
+  .step-pill .label { font-size: .875rem; }
+  .step-pill[aria-current="step"] { color: var(--ink); }
+  .step-pill[aria-current="step"] .label { font-weight: 900; position: relative; }
+  .step-pill[aria-current="step"] .label::after { content: ''; position: absolute; left: -2px; right: -4px; bottom: -3px; border-bottom: 2px solid var(--vermilion); filter: url(#rough-sm); }
+  .step-pill.is-done { color: var(--ink-soft); }
+  .step-pill.is-done .label { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+  .steps .sep { color: var(--pencil); align-self: center; }
+
+  .panel { display: none; }
+  .panel.is-open { display: block; animation: panel-in 220ms var(--ease); }
+  @keyframes panel-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .panel-title { font-family: var(--font-hand); font-size: 1.5rem; font-weight: 400; letter-spacing: .04em; margin-bottom: 6px; }
+  .panel-sub { font-size: .875rem; color: var(--ink-soft); margin-bottom: 24px; max-width: 46em; }
+
+  /* ============ 第1格 · 取材 ============ */
+  .dropzone {
+    position: relative;
+    max-width: 560px; margin: 0 auto;
+    padding: 56px 32px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--paper);
+    transition: background 180ms var(--ease);
+  }
+  .dropzone::before { content: ''; position: absolute; inset: 0; border: 2px dashed var(--ink-faint); border-radius: var(--wobble-frame); pointer-events: none; filter: url(#rough-lg); transition: border-color 180ms var(--ease); }
+  .dropzone:hover { background: var(--hover-wash); }
+  .dropzone:hover::before { border-color: var(--ink); }
+  .dropzone:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+  .dropzone .big { font-family: var(--font-hand); font-size: 1.5rem; }
+  .dropzone .fmt { font-size: .78rem; color: var(--ink-faint); margin-top: 10px; }
+  .dropzone .demo-hint { display: inline-block; font-size: .875rem; color: var(--ink-soft); border-bottom: 1.5px solid var(--pencil); margin-top: 18px; }
+  .privacy { display: flex; align-items: baseline; gap: 8px; justify-content: center; margin-top: 18px; font-size: .78rem; color: var(--ink-faint); }
+
+  /* 桌上的照片 */
+  .photo {
+    position: relative;
+    display: inline-block;
+    padding: 10px 10px 30px;
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    transform: rotate(1.6deg);
+  }
+  .photo .clip { position: absolute; top: -14px; left: 26px; }
+  .photo figcaption { position: absolute; left: 0; right: 0; bottom: 7px; text-align: center; font-family: var(--font-hand); font-size: .95rem; color: var(--ink-soft); }
+  .photo svg { display: block; width: 190px; height: auto; }
+
+  /* ============ 第2、3格 · 工作台 ============ */
+  .bench { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 36px; align-items: start; }
+  .work-list { display: flex; flex-direction: column; gap: 12px; max-width: 460px; }
+  .work-line { position: relative; display: flex; align-items: baseline; gap: 10px; padding: 10px 14px 11px; font-size: .875rem; color: var(--ink-faint); background: var(--paper); }
+  .work-line::before { content: ''; position: absolute; inset: 0; border: 1.5px dashed var(--pencil); pointer-events: none; filter: url(#rough-sm); }
+  .work-line .glyph { font-weight: 900; flex: none; }
+  .work-line .result { margin-left: auto; font-size: .78rem; white-space: nowrap; padding-left: 10px; }
+  .work-line.is-running { color: var(--ink-soft); }
+  .work-line.is-running .dots i { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--ink-soft); margin-right: 3px; animation: pulse 1.2s ease-in-out infinite; }
+  .work-line.is-running .dots i:nth-child(2) { animation-delay: .2s; }
+  .work-line.is-running .dots i:nth-child(3) { animation-delay: .4s; }
+  .work-line.is-done { color: var(--ink); }
+  .work-line.is-done::before { border-style: solid; border-color: var(--ink); }
+  .work-line.is-skip { color: var(--ink-faint); }
+  .work-line.is-skip::before { border-style: dotted; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+  /* 认人 */
+  .guess { margin-top: 22px; }
+  .guess-line { font-size: 1rem; line-height: 1.75; max-width: 30em; }
+  .guess-line strong { font-weight: 900; }
+  .guess-line .conf { font-size: .78rem; color: var(--ink-faint); }
+  .guess-actions { display: flex; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
+  .btn {
+    font-family: var(--font-body); font-size: .875rem; font-weight: 700; color: var(--ink);
+    background: var(--paper); border: 2px solid var(--ink); padding: 9px 18px; cursor: pointer;
+    border-radius: var(--wobble-tag); filter: url(#rough-sm);
+    transition: background 180ms var(--ease), transform 180ms var(--ease);
+  }
+  .btn:hover { background: var(--hover-wash); }
+  .btn:active { transform: scale(.97); }
+  .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .btn[disabled] { color: var(--pencil); border-color: var(--pencil); cursor: not-allowed; }
+  .btn-link { background: none; border: none; font-size: .875rem; color: var(--ink-soft); cursor: pointer; padding: 9px 4px; text-decoration: underline; text-underline-offset: 3px; }
+  .btn-link:hover { color: var(--ink); }
+  .btn-link:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .rename { display: none; margin-top: 14px; gap: 10px; }
+  .rename.is-open { display: flex; }
+  .rename input { font-family: var(--font-body); font-size: 1rem; padding: 9px 12px; border: 2px solid var(--ink); background: var(--paper); width: 240px; max-width: 60vw; }
+  .rename input:focus { outline: 1px solid var(--pencil); outline-offset: 3px; }
+
+  /* ============ 第4格 · 设定稿 ============ */
+  .sheet-wrap { position: relative; }
+  .sheet { position: relative; background: var(--paper); padding: clamp(22px, 4vw, 40px); }
+  .sheet::before { content: ''; position: absolute; inset: 0; border: 2.5px solid var(--ink); border-radius: var(--wobble-frame); outline: 1px solid var(--pencil); outline-offset: 4px; pointer-events: none; filter: url(#rough-lg); }
+  .sheet-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+  .sheet-head .t { font-family: var(--font-hand); font-size: 1.5rem; }
+  .sheet-head .note { font-size: .78rem; color: var(--ink-faint); }
+  .sheet-grid { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; align-items: start; }
+  .sheet-grid .portrait { width: 100%; display: block; }
+  .before-after { display: flex; align-items: center; gap: 8px; margin-top: 10px; justify-content: center; }
+  .before-after .thumb { width: 52px; border: 1px solid var(--pencil); padding: 3px; background: var(--paper); }
+  .before-after .thumb svg { display: block; width: 100%; height: auto; }
+  .before-after .arrow { font-weight: 900; color: var(--ink-faint); }
+  .before-after .lab { font-size: .78rem; color: var(--ink-faint); }
+
+  .field { display: grid; grid-template-columns: 4.5em minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 9px 0; }
+  .field + .field { border-top: 1px solid oklch(92% 0 0); }
+  .field .k { font-size: .78rem; font-weight: 900; color: var(--ink-faint); }
+  .field .v { font-family: var(--font-body); font-size: 1rem; color: var(--ink); border: none; background: none; width: 100%; padding: 2px 4px; }
+  .field .v:hover { background: var(--hover-wash); }
+  .field .v:focus { outline: 1.5px solid var(--ink); outline-offset: 2px; background: var(--paper); }
+  .field .src { font-size: .72rem; color: var(--ink-faint); border: 1px solid var(--pencil); padding: 2px 8px 3px; white-space: nowrap; }
+  .sheet-actions { display: flex; align-items: center; gap: 16px; margin-top: 26px; flex-wrap: wrap; }
+  /* 登场印章按钮 */
+  .seal-big {
+    font-family: var(--font-seal); font-size: 1.5rem; line-height: 1;
+    color: var(--vermilion);
+    padding: 14px 16px;
+    background: var(--paper);
+    border: 3px solid var(--vermilion); border-radius: 6px;
+    outline: 1px solid var(--vermilion); outline-offset: 3px;
+    cursor: pointer;
+    transform: rotate(-4deg);
+    filter: url(#rough-sm);
+    transition: transform 180ms var(--ease);
+  }
+  .seal-big:hover { transform: rotate(0deg); }
+  .seal-big:active { transform: scale(.93); }
+  .seal-big:focus-visible { box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--ink); }
+  .sheet-actions .hint { font-size: .78rem; color: var(--ink-faint); }
+
+  /* 盖下去的章 */
+  .stamped {
+    position: absolute; right: clamp(10px, 6vw, 60px); top: -22px;
+    font-family: var(--font-seal); font-size: 2rem; line-height: 1;
+    color: var(--vermilion);
+    padding: .3em .32em .24em;
+    background: var(--paper);
+    border: 3px solid var(--vermilion); border-radius: 6px;
+    outline: 1px solid var(--vermilion); outline-offset: 3px;
+    transform: rotate(8deg);
+    filter: url(#rough-sm);
+    display: none;
+  }
+  .stamped.is-on { display: block; animation: stamp 400ms var(--ease) both; }
+  @keyframes stamp { from { opacity: 0; transform: rotate(8deg) scale(1.6); } to { opacity: 1; transform: rotate(8deg) scale(1); } }
+
+  /* ============ 第5格 · 登场 ============ */
+  .debut { text-align: center; padding-top: 12px; }
+  .debut .fukidashi {
+    position: relative; display: inline-block;
+    border: 2px solid var(--ink); border-radius: var(--bubble);
+    padding: 12px 22px 14px;
+    font-family: var(--font-seal); font-size: 1.2rem; letter-spacing: .04em;
+    background: var(--paper);
+    filter: url(#rough-sm);
+    margin-top: 18px;
+  }
+  .debut .fukidashi::before { content: ''; position: absolute; top: -15px; left: 34px; border: solid transparent; border-width: 0 7px 15px 12px; border-bottom-color: var(--ink); }
+  .debut .fukidashi::after { content: ''; position: absolute; top: -10.5px; left: 36.5px; border: solid transparent; border-width: 0 5.5px 12px 9.5px; border-bottom-color: var(--paper); }
+  .debut-actions { display: flex; gap: 16px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+  .btn-strong { font-weight: 900; border-width: 2.5px; padding: 11px 24px; text-decoration: none; display: inline-block; }
+  .debut .after-note { margin-top: 18px; font-size: .78rem; color: var(--ink-faint); }
+
+  /* ============ 响应式 ============ */
+  @media (max-width: 760px) {
+    .bench { grid-template-columns: 1fr; gap: 24px; }
+    .bench .photo { justify-self: center; }
+    .sheet-grid { grid-template-columns: 1fr; }
+    .sheet-grid .portrait { max-width: 200px; margin: 0 auto; }
+    .field { grid-template-columns: 4.5em minmax(0, 1fr); }
+    .field .src { grid-column: 2; justify-self: start; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="rough-lg" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.6"/></filter>
+  <filter id="rough-sm" x="-8%" y="-8%" width="116%" height="116%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2"/></filter>
+  <!-- 彩色原图（上传的图 = 用户内容，不受黑白限制） -->
+  <g id="src-color">
+    <rect width="240" height="264" fill="oklch(93% 0.02 250)"/>
+    <path d="M120 14 C64 14 36 56 38 106 C39 138 50 160 44 206 C60 200 76 190 84 178 L84 118 C84 92 100 76 120 76 C140 76 156 92 156 118 L156 178 C164 190 180 200 196 206 C190 160 201 138 202 106 C204 56 176 14 120 14 Z" fill="oklch(34% 0.05 310)"/>
+    <circle cx="194" cy="56" r="16" fill="oklch(34% 0.05 310)"/>
+    <path d="M203 70 C209 86 201 100 207 116" fill="none" stroke="oklch(34% 0.05 310)" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M84 118 C84 92 100 76 120 76 C140 76 156 92 156 118 C156 142 144 166 120 168 C96 166 84 142 84 118 Z" fill="oklch(94% 0.025 55)" stroke="oklch(40% 0.04 310)" stroke-width="1.6"/>
+    <path d="M84 116 C82 84 100 70 120 70 C140 70 158 84 156 116 L148 104 L142 116 L134 100 L126 114 L118 98 L110 114 L102 102 L94 116 L88 106 Z" fill="oklch(34% 0.05 310)"/>
+    <path d="M94 128 C98 124 108 124 112 128 M128 128 C132 124 142 124 146 128" fill="none" stroke="oklch(30% 0.04 310)" stroke-width="3"/>
+    <circle cx="103" cy="133" r="6" fill="oklch(70% 0.12 210)"/>
+    <circle cx="137" cy="133" r="6" fill="oklch(70% 0.12 210)"/>
+    <circle cx="103" cy="133" r="2.4" fill="oklch(25% 0.03 260)"/>
+    <circle cx="137" cy="133" r="2.4" fill="oklch(25% 0.03 260)"/>
+    <path d="M86 142 q6 5 14 4 M140 146 q8 1 14 -4" stroke="oklch(78% 0.09 20)" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/>
+    <path d="M112 156 C117 161 123 161 128 156" fill="none" stroke="oklch(40% 0.05 20)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M108 166 C109 176 108 182 104 188 M132 166 C131 176 132 182 136 188" fill="none" stroke="oklch(40% 0.04 310)" stroke-width="2"/>
+    <path d="M103 175 C111 180 129 180 137 175 L137 182 C129 187 111 187 103 182 Z" fill="oklch(25% 0.02 310)"/>
+    <path d="M104 188 C96 192 82 196 66 206 C48 218 40 236 38 258 L202 258 C200 236 192 218 174 206 C158 196 144 192 136 188" fill="oklch(98% 0.005 90)" stroke="oklch(55% 0.02 270)" stroke-width="1.6"/>
+    <path d="M120 206 L104 198 L106 216 L120 208 L134 216 L136 198 Z" fill="oklch(25% 0.02 310)"/>
+  </g>
+  <!-- 黑白线稿（转换结果） -->
+  <g id="src-ink">
+    <path d="M120 14 C64 14 36 56 38 106 C39 138 50 160 44 206 C60 200 76 190 84 178 L84 118 C84 92 100 76 120 76 C140 76 156 92 156 118 L156 178 C164 190 180 200 196 206 C190 160 201 138 202 106 C204 56 176 14 120 14 Z" fill="oklch(22% 0.01 280)"/>
+    <circle cx="194" cy="56" r="16" fill="oklch(22% 0.01 280)"/>
+    <path d="M185 62 C190 52 199 50 205 57" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".85"/>
+    <path d="M203 70 C209 86 201 100 207 116" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M114 18 C112 10 116 4 122 2 M122 2 C120 8 122 13 126 16" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M84 118 C84 92 100 76 120 76 C140 76 156 92 156 118 C156 142 144 166 120 168 C96 166 84 142 84 118 Z" fill="#fff" stroke="oklch(22% 0.01 280)" stroke-width="2.2"/>
+    <path d="M84 116 C82 84 100 70 120 70 C140 70 158 84 156 116 L148 104 L142 116 L134 100 L126 114 L118 98 L110 114 L102 102 L94 116 L88 106 Z" fill="oklch(22% 0.01 280)"/>
+    <path d="M66 116 C63 136 66 152 62 168 M174 116 C177 136 174 152 178 168" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".85"/>
+    <path d="M96 116 C100 113 106 112 110 114 M130 114 C134 112 140 113 144 116" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M94 128 C98 124 108 124 112 128" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="3.4" stroke-linecap="round"/>
+    <path d="M128 128 C132 124 142 124 146 128" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="3.4" stroke-linecap="round"/>
+    <circle cx="103" cy="133" r="6" fill="oklch(70% 0.12 210)" stroke="oklch(22% 0.01 280)" stroke-width="1.6"/>
+    <circle cx="137" cy="133" r="6" fill="oklch(70% 0.12 210)" stroke="oklch(22% 0.01 280)" stroke-width="1.6"/>
+    <circle cx="103" cy="133" r="2.4" fill="oklch(22% 0.01 280)"/>
+    <circle cx="137" cy="133" r="2.4" fill="oklch(22% 0.01 280)"/>
+    <circle cx="101" cy="130.5" r="1.5" fill="#fff"/>
+    <circle cx="135" cy="130.5" r="1.5" fill="#fff"/>
+    <path d="M92 132 L88 130 M148 132 L152 130" stroke="oklch(22% 0.01 280)" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M86 142 l8 5 M91 140 l8 5 M143 147 l8 -5 M148 149 l8 -5" stroke="oklch(22% 0.01 280)" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
+    <path d="M119 146 L121 148" stroke="oklch(22% 0.01 280)" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M112 156 C117 161 123 161 128 156" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M108 166 C109 176 108 182 104 188 M132 166 C131 176 132 182 136 188" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M103 175 C111 180 129 180 137 175 L137 182 C129 187 111 187 103 182 Z" fill="oklch(22% 0.01 280)"/>
+    <path d="M104 188 C96 192 82 196 66 206 C48 218 40 236 38 258 L202 258 C200 236 192 218 174 206 C158 196 144 192 136 188" fill="#fff" stroke="oklch(22% 0.01 280)" stroke-width="2.2"/>
+    <path d="M104 188 L114 202 L120 194 L126 202 L136 188" fill="#fff" stroke="oklch(22% 0.01 280)" stroke-width="2"/>
+    <path d="M120 206 L104 198 L106 216 L120 208 L134 216 L136 198 Z" fill="oklch(22% 0.01 280)"/>
+    <path d="M116 220 L114 236 M124 220 L123 232" stroke="oklch(22% 0.01 280)" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M76 226 C74 238 74 248 75 258 M164 226 C166 238 166 248 165 258" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="1.4" stroke-linecap="round" opacity=".6"/>
+  </g>
+</defs></svg>
+
+<header class="topbar">
+  <span class="logo">2CY AGENT</span>
+  <span class="page-name">新角色登场</span>
+  <a class="back" href="2cy-agent-app.html">返回对话</a>
+</header>
+
+<div class="stage">
+
+  <!-- 工序条 -->
+  <ol class="steps" aria-label="共创工序">
+    <li class="step-pill" data-step="1" aria-current="step"><span class="no">第1格</span><span class="label">取材</span></li>
+    <li class="sep" aria-hidden="true">→</li>
+    <li class="step-pill" data-step="2"><span class="no">第2格</span><span class="label">认人</span></li>
+    <li class="sep" aria-hidden="true">→</li>
+    <li class="step-pill" data-step="3"><span class="no">第3格</span><span class="label">查资料</span></li>
+    <li class="sep" aria-hidden="true">→</li>
+    <li class="step-pill" data-step="4"><span class="no">第4格</span><span class="label">设定稿</span></li>
+    <li class="sep" aria-hidden="true">→</li>
+    <li class="step-pill" data-step="5"><span class="no">第5格</span><span class="label">登场</span></li>
+  </ol>
+
+  <!-- ===== 第1格 · 取材 ===== -->
+  <section class="panel is-open" data-panel="1" aria-label="取材：上传图片">
+    <h2 class="panel-title">把她的图放到桌上。</h2>
+    <p class="panel-sub">任何一张图都行：截图、官图、同人图。转线稿在你的电脑上完成，图片不出设备。</p>
+    <div style="text-align:center;">
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="上传图片，或使用示例图">
+        <div class="big">拖一张图进来</div>
+        <div class="fmt">png / jpg / webp</div>
+        <span class="demo-hint">或点击使用示例图（蕾塞）</span>
+      </div>
+      <p class="privacy"><svg width="11" height="13" viewBox="0 0 11 13" aria-hidden="true" style="flex:none;align-self:center"><rect x="1" y="5.5" width="9" height="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 5.5 V4 a2.5 2.5 0 0 1 5 0 V5.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>本地处理 · 不上传云端 · BYOK</p>
+    </div>
+  </section>
+
+  <!-- ===== 第2格 · 认人 ===== -->
+  <section class="panel" data-panel="2" aria-label="认人：识别与转线稿">
+    <h2 class="panel-title">认认看，这位是——</h2>
+    <p class="panel-sub">线稿转换在本地跑，视觉识别只用来猜名字，最终以你说的为准。</p>
+    <div class="bench">
+      <figure class="photo">
+        <svg class="clip" width="30" height="34" viewBox="0 0 30 34" aria-hidden="true"><path d="M10 30 L10 8 C10 3 17 3 17 8 L17 26 C17 29 13 29 13 26 L13 10" fill="none" stroke="oklch(42% 0 0)" stroke-width="2.4" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 240 264" role="img" aria-label="上传的彩色原图"><use href="#src-color"/></svg>
+        <figcaption>upload_reze.png</figcaption>
+      </figure>
+      <div>
+        <div class="work-list" id="workList2">
+          <div class="work-line" data-line="convert"><span class="glyph">↓</span>本地转线稿 <span class="mini">· CPU</span><span class="dots"><i></i><i></i><i></i></span><span class="result"></span></div>
+          <div class="work-line" data-line="vision"><span class="glyph">↓</span>视觉识别<span class="dots"><i></i><i></i><i></i></span><span class="result"></span></div>
+        </div>
+        <div class="guess" id="guessBox" hidden>
+          <p class="guess-line">这位应该是 <strong>蕾塞（Reze）</strong>，出自《电锯人》。<span class="conf">相似度 92%</span></p>
+          <div class="guess-actions">
+            <button class="btn" id="confirmGuess" type="button">是她，继续</button>
+            <button class="btn-link" id="renameToggle" type="button">不是，手动输入名字</button>
+          </div>
+          <div class="rename" id="renameRow">
+            <input type="text" id="renameInput" placeholder="角色名，如：蕾塞" aria-label="手动输入角色名">
+            <button class="btn" id="renameOk" type="button">就是这位</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第3格 · 查资料 ===== -->
+  <section class="panel" data-panel="3" aria-label="查资料：联网搜集人设">
+    <h2 class="panel-title">去资料室查「蕾塞」。</h2>
+    <p class="panel-sub">逐个来源搜集性格、经历、口癖与说话方式，找不到就跳过，全都可以在设定稿里改。</p>
+    <div class="work-list" id="workList3">
+      <div class="work-line" data-line="moegirl"><span class="glyph">↓</span>萌娘百科<span class="dots"><i></i><i></i><i></i></span><span class="result"></span></div>
+      <div class="work-line" data-line="bangumi"><span class="glyph">↓</span>Bangumi<span class="dots"><i></i><i></i><i></i></span><span class="result"></span></div>
+      <div class="work-line" data-line="fandom"><span class="glyph">↓</span>Fandom Wiki<span class="dots"><i></i><i></i><i></i></span><span class="result"></span></div>
+    </div>
+    <div class="guess-actions" style="margin-top: 24px;">
+      <button class="btn" id="toSheet" type="button" disabled>整理成设定稿</button>
+      <span class="sheet-actions hint" id="gatherHint">搜集中……</span>
+    </div>
+  </section>
+
+  <!-- ===== 第4格 · 设定稿 ===== -->
+  <section class="panel" data-panel="4" aria-label="设定稿：预览与微调">
+    <h2 class="panel-title">她的设定稿。</h2>
+    <p class="panel-sub">每一条都能直接改，改过的会标成「手动」。盖章之后她就照这张稿子演。</p>
+    <div class="sheet-wrap">
+      <span class="stamped" id="stampMark" aria-hidden="true">登场</span>
+      <div class="sheet">
+        <div class="sheet-head">
+          <span class="t">角色设定稿 · 第 001 号</span>
+          <span class="note">来源可追溯 · 随时重新搜集</span>
+        </div>
+        <div class="sheet-grid">
+          <div>
+            <svg class="portrait" viewBox="0 0 240 264" role="img" aria-label="转线稿后的蕾塞立绘"><use href="#src-ink"/></svg>
+            <div class="before-after">
+              <span class="thumb"><svg viewBox="0 0 240 264" aria-label="原图缩略"><use href="#src-color"/></svg></span>
+              <span class="arrow">→</span>
+              <span class="lab">已转线稿 · 本地</span>
+            </div>
+          </div>
+          <div>
+            <div class="field"><span class="k">名字</span><input class="v" data-field value="蕾塞（Reze）"><span class="src">视觉识别</span></div>
+            <div class="field"><span class="k">出处</span><input class="v" data-field value="《电锯人》 Chainsaw Man"><span class="src">萌娘百科</span></div>
+            <div class="field"><span class="k">性格</span><input class="v" data-field value="表面温柔爱逗人，行动果断，藏着心事"><span class="src">萌娘百科</span></div>
+            <div class="field"><span class="k">口癖</span><input class="v" data-field value="偶尔冒一句俄语（Привет / Хорошо）"><span class="src">Bangumi</span></div>
+            <div class="field"><span class="k">说话方式</span><input class="v" data-field value="亲昵平语，爱用反问逗人"><span class="src">萌娘百科</span></div>
+            <div class="field"><span class="k">羁绊设定</span><input class="v" data-field value="在咖啡店打过工，惯例先问你要不要咖啡"><span class="src">Bangumi</span></div>
+          </div>
+        </div>
+        <div class="sheet-actions">
+          <button class="seal-big" id="stampBtn" type="button" aria-label="盖章：让她登场">登场</button>
+          <span class="hint">盖章即生效，之后也能随时改。</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第5格 · 登场 ===== -->
+  <section class="panel" data-panel="5" aria-label="登场">
+    <div class="debut">
+      <svg class="portrait" style="width:190px" viewBox="0 0 240 264" role="img" aria-label="蕾塞立绘"><use href="#src-ink"/></svg>
+      <div>
+        <span class="fukidashi">Привет。我是蕾塞——今后请多指教。</span>
+      </div>
+      <div class="debut-actions">
+        <a class="btn btn-strong" href="2cy-agent-app.html">进入对话</a>
+        <button class="btn" type="button">分享到社区角色卡库</button>
+      </div>
+      <p class="after-note">设定稿保存在本机 · 可在「角色卡」里随时编辑或重新搜集</p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const panels = document.querySelectorAll('.panel');
+  const pills = document.querySelectorAll('.step-pill');
+  let current = 1;
+
+  function goto(n) {
+    current = n;
+    panels.forEach((p) => p.classList.toggle('is-open', Number(p.dataset.panel) === n));
+    pills.forEach((pill) => {
+      const s = Number(pill.dataset.step);
+      pill.toggleAttribute('aria-current', false);
+      if (s === n) pill.setAttribute('aria-current', 'step');
+      pill.classList.toggle('is-done', s < n);
+    });
+    window.scrollTo({ top: 0 });
+  }
+
+  function runLine(line, ms, result, cls) {
+    return new Promise((done) => {
+      line.classList.add('is-running');
+      setTimeout(() => {
+        line.classList.remove('is-running');
+        line.classList.add(cls || 'is-done');
+        line.querySelector('.dots')?.remove();
+        line.querySelector('.result').textContent = result;
+        done();
+      }, ms);
+    });
+  }
+
+  // 第1格 → 第2格
+  const dropzone = document.getElementById('dropzone');
+  async function startBench() {
+    goto(2);
+    const list = document.getElementById('workList2');
+    await runLine(list.querySelector('[data-line="convert"]'), 900, '完成 · 图片未离开设备');
+    await runLine(list.querySelector('[data-line="vision"]'), 800, '有眉目了');
+    document.getElementById('guessBox').hidden = false;
+  }
+  dropzone.addEventListener('click', startBench);
+  dropzone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startBench(); } });
+
+  // 第2格 → 第3格
+  async function startGather() {
+    goto(3);
+    const list = document.getElementById('workList3');
+    await runLine(list.querySelector('[data-line="moegirl"]'), 1000, '7 条设定');
+    await runLine(list.querySelector('[data-line="bangumi"]'), 900, '5 条设定');
+    await runLine(list.querySelector('[data-line="fandom"]'), 700, '未收录 · 跳过', 'is-skip');
+    document.getElementById('gatherHint').textContent = '共 12 条设定，够她开演了。';
+    document.getElementById('toSheet').disabled = false;
+  }
+  document.getElementById('confirmGuess').addEventListener('click', startGather);
+  document.getElementById('renameToggle').addEventListener('click', () => {
+    document.getElementById('renameRow').classList.toggle('is-open');
+    document.getElementById('renameInput').focus();
+  });
+  document.getElementById('renameOk').addEventListener('click', startGather);
+
+  // 第3格 → 第4格
+  document.getElementById('toSheet').addEventListener('click', () => goto(4));
+
+  // 设定稿编辑 → 来源改为手动
+  document.querySelectorAll('.field .v').forEach((inp) => {
+    inp.addEventListener('input', () => { inp.closest('.field').querySelector('.src').textContent = '手动'; });
+  });
+
+  // 第4格 盖章 → 第5格
+  document.getElementById('stampBtn').addEventListener('click', () => {
+    const mark = document.getElementById('stampMark');
+    mark.classList.add('is-on');
+    setTimeout(() => goto(5), 700);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2CY Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;700;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: oklch(100% 0 0);
+    --ink: oklch(22% 0.01 280);
+    --ink-soft: oklch(42% 0 0);
+    --ink-faint: oklch(50% 0 0);
+    --pencil: oklch(70% 0 0);
+    --npb: oklch(87% 0.05 230);
+    --vermilion: oklch(52% 0.185 30);
+    --vermilion-wash: oklch(52% 0.185 30 / 0.06);
+    --soul: oklch(70% 0.12 210);
+    --soul-deep: oklch(45% 0.09 215);
+    --hover-wash: oklch(97% 0 0);
+    --font-hand: 'Zhi Mang Xing', 'Ma Shan Zheng', 'Noto Sans SC', sans-serif;
+    --font-seal: 'Ma Shan Zheng', 'Noto Sans SC', serif;
+    --font-logo: 'Dela Gothic One', 'Noto Sans SC', sans-serif;
+    --font-body: 'Noto Sans SC', system-ui, sans-serif;
+    --ease: cubic-bezier(.19, 1, .22, 1);
+    --wobble-tag: 10px 140px 12px 130px / 130px 10px 140px 12px;
+    --bubble: 22px 26px 24px 28px / 26px 22px 28px 24px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    color: var(--ink);
+    background: var(--paper);
+    /* 原稿用纸方眼（极淡，仅作桌面材质） */
+    background-image:
+      repeating-linear-gradient(to bottom, oklch(87% 0.05 230 / .22) 0 1px, transparent 1px 36px),
+      repeating-linear-gradient(to right, oklch(87% 0.05 230 / .22) 0 1px, transparent 1px 36px);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============ 应用骨架 ============ */
+  .app {
+    display: grid;
+    grid-template-areas: "top top top" "nav main her";
+    grid-template-columns: 236px minmax(0, 1fr) 300px;
+    grid-template-rows: 56px minmax(0, 1fr);
+    height: 100vh;
+    height: 100dvh;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* ============ 顶栏 ============ */
+  .topbar {
+    grid-area: top;
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 20px;
+    background: var(--paper);
+    position: relative;
+  }
+  .topbar::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; border-bottom: 2px solid var(--ink); filter: url(#rough-sm); }
+  .logo { font-family: var(--font-logo); font-size: .875rem; letter-spacing: .02em; white-space: nowrap; }
+  .session-title { font-family: var(--font-hand); font-size: 1.2rem; font-weight: 400; letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .chip { font-size: .78rem; color: var(--ink-soft); border: 1px solid var(--pencil); padding: 4px 10px; white-space: nowrap; }
+  .btn-ghost {
+    font-family: var(--font-body); font-size: .875rem; font-weight: 700; color: var(--ink);
+    background: var(--paper); border: 2px solid var(--ink); padding: 6px 14px; cursor: pointer;
+    border-radius: var(--wobble-tag);
+    position: relative; filter: url(#rough-sm);
+    transition: background 180ms var(--ease), transform 180ms var(--ease);
+  }
+  .btn-ghost:hover { background: var(--hover-wash); }
+  .btn-ghost:active { transform: scale(.97); }
+  .btn-ghost:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .menu-btn { display: none; }
+
+  /* ============ 回目（会话列表） ============ */
+  .mokuji {
+    grid-area: nav;
+    position: relative;
+    padding: 18px 14px;
+    background: var(--paper);
+    display: flex; flex-direction: column; gap: 6px;
+    overflow-y: auto;
+  }
+  .mokuji::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; border-right: 1.5px solid var(--pencil); filter: url(#rough-sm); }
+  .mokuji-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .mokuji-head h2 { font-family: var(--font-hand); font-size: 1.2rem; letter-spacing: .08em; font-weight: 400; }
+  .session {
+    display: block; width: 100%; text-align: left;
+    background: none; border: none; cursor: pointer;
+    padding: 10px 10px 11px; font-family: var(--font-body);
+    transition: background 150ms var(--ease);
+  }
+  .session:hover { background: var(--hover-wash); }
+  .session:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+  .session .no { font-size: .78rem; color: var(--ink-faint); display: block; }
+  .session .name { font-size: .875rem; color: var(--ink-soft); display: inline-block; margin-top: 2px; }
+  .session[aria-current="true"] .name { color: var(--ink); font-weight: 900; position: relative; }
+  /* 红笔批划：当前话 */
+  .session[aria-current="true"] .name::after {
+    content: ''; position: absolute; left: -2px; right: -4px; bottom: -3px;
+    border-bottom: 2px solid var(--vermilion); filter: url(#rough-sm);
+  }
+  .mokuji-foot { margin-top: auto; padding: 12px 10px 4px; font-size: .78rem; }
+  .mokuji-foot a { color: var(--ink-faint); text-decoration: none; }
+  .mokuji-foot a:hover { color: var(--ink); text-decoration: underline; }
+
+  /* ============ 原稿页（对话区） ============ */
+  .genko { grid-area: main; display: flex; flex-direction: column; min-height: 0; background: var(--paper); }
+  .chat { flex: 1; overflow-y: auto; padding: 26px clamp(18px, 4vw, 56px) 12px; }
+  .chat-view { display: none; max-width: 720px; margin: 0 auto; }
+  .chat-view.is-open { display: block; }
+
+  .day-rule { display: flex; align-items: center; gap: 12px; margin: 4px 0 20px; color: var(--pencil); font-family: var(--font-hand); font-size: .95rem; }
+  .day-rule::before, .day-rule::after { content: ''; flex: 1; border-top: 1px solid var(--pencil); }
+
+  .msg { margin-bottom: 18px; animation: msg-in 200ms var(--ease); }
+  @keyframes msg-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* 用户消息：打字的直角框（印刷之物） */
+  .msg-user { display: flex; justify-content: flex-end; }
+  .msg-user .box {
+    max-width: 78%;
+    border: 2px solid var(--ink);
+    padding: 10px 16px 12px;
+    background: var(--paper);
+    line-height: 1.7;
+  }
+
+  /* 她的消息：头像 + 内容 */
+  .msg-her { display: flex; gap: 12px; align-items: flex-start; }
+  .msg-avatar { width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--ink); overflow: hidden; background: var(--paper); flex: none; margin-top: 2px; }
+  .msg-avatar svg { display: block; width: 100%; height: 100%; }
+  .msg-body { min-width: 0; flex: 1; }
+  .her-line { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+  .her-line .name { font-family: var(--font-seal); font-size: .95rem; }
+  .presence { width: 8px; height: 8px; border-radius: 50%; background: var(--soul); flex: none; }
+  .presence.is-busy { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+  /* 她的台词：手绘气泡（她的手迹） */
+  .msg-her .bubble {
+    position: relative; display: inline-block; max-width: 82%;
+    border: 2px solid var(--ink);
+    border-radius: var(--bubble);
+    padding: 9px 18px 11px;
+    background: var(--paper);
+    font-family: var(--font-seal);
+    font-size: 1.2rem;
+    letter-spacing: .04em;
+    line-height: 1.65;
+    filter: url(#rough-sm);
+  }
+  .msg-her .bubble::before { content: ''; position: absolute; top: 14px; left: -14px; border: solid transparent; border-width: 7px 15px 10px 0; border-right-color: var(--ink); }
+  .msg-her .bubble::after { content: ''; position: absolute; top: 16.5px; left: -10px; border: solid transparent; border-width: 5px 12px 7.5px 0; border-right-color: var(--paper); }
+
+  /* 打印稿：她递来的一页纸（长产出） */
+  .msg-her .sheet {
+    max-width: 92%;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    padding: 0;
+  }
+  .sheet-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .78rem; font-weight: 900; color: var(--ink-soft);
+    letter-spacing: .04em;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--pencil);
+  }
+  .sheet-body { padding: 14px 18px 16px; line-height: 1.75; max-width: 62ch; }
+  .sheet-body p + p { margin-top: 10px; }
+  .sheet-body strong { font-weight: 900; }
+  .sheet-foot { display: flex; gap: 14px; padding: 8px 16px 10px; border-top: 1px solid var(--pencil); }
+  .sheet-foot button {
+    font-family: var(--font-body); font-size: .78rem; font-weight: 700;
+    background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 2px 4px;
+    transition: color 150ms var(--ease);
+  }
+  .sheet-foot button:hover { color: var(--ink); text-decoration: underline; }
+  .sheet-foot button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  /* 工具调用：页边小注 */
+  .tool-note {
+    display: inline-flex; align-items: baseline; gap: 8px;
+    position: relative;
+    font-size: .78rem; color: var(--ink-soft);
+    padding: 6px 12px 7px;
+    margin: 0 0 18px 2px;
+    background: var(--paper);
+  }
+  .tool-note::before { content: ''; position: absolute; inset: 0; border: 1.5px solid var(--pencil); pointer-events: none; filter: url(#rough-sm); }
+  .tool-note .glyph { font-weight: 900; color: var(--ink); }
+  .tool-note.is-running::before { border-style: dashed; }
+  .tool-note .state { color: var(--ink-faint); }
+
+  /* 作画中（思考态） */
+  .thinking { display: inline-flex; align-items: center; gap: 10px; }
+  .thinking .dots { display: inline-flex; gap: 5px; }
+  .thinking .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink); animation: pulse 1.2s ease-in-out infinite; }
+  .thinking .dots i:nth-child(2) { animation-delay: .2s; }
+  .thinking .dots i:nth-child(3) { animation-delay: .4s; }
+  .thinking .hint { font-family: var(--font-seal); font-size: .95rem; color: var(--ink-faint); }
+
+  /* 空状态：白纸一页 */
+  .empty {
+    position: relative;
+    margin: 48px auto 0; max-width: 460px;
+    padding: 40px 32px 36px;
+    text-align: center;
+  }
+  .empty::before { content: ''; position: absolute; inset: 0; border: 1.5px solid var(--pencil); border-radius: 18px 250px 20px 245px / 245px 18px 240px 16px; pointer-events: none; filter: url(#rough-lg); }
+  .empty h3 { font-family: var(--font-hand); font-size: 1.5rem; font-weight: 400; letter-spacing: .05em; }
+  .empty p { font-size: .875rem; color: var(--ink-soft); margin-top: 8px; }
+  .empty .starters { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
+  .starter {
+    font-family: var(--font-body); font-size: .875rem; color: var(--ink-soft);
+    background: var(--paper); border: 2px solid var(--ink);
+    border-radius: var(--wobble-tag);
+    padding: 7px 14px; cursor: pointer;
+    filter: url(#rough-sm);
+    transition: background 150ms var(--ease), color 150ms var(--ease);
+  }
+  .starter:hover { background: var(--hover-wash); color: var(--ink); }
+  .starter:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+  /* ============ 输入区 ============ */
+  .composer { padding: 10px clamp(18px, 4vw, 56px) 8px; }
+  .composer-row { max-width: 720px; margin: 0 auto; display: flex; align-items: stretch; gap: 14px; }
+  .composer-box { flex: 1; position: relative; }
+  .composer textarea {
+    width: 100%; min-height: 56px; max-height: 160px; resize: none;
+    font-family: var(--font-body); font-size: 1rem; line-height: 1.6; color: var(--ink);
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    padding: 13px 14px 13px 44px;
+    display: block;
+  }
+  .composer textarea::placeholder { color: var(--ink-faint); }
+  .composer textarea:focus { outline: 1px solid var(--pencil); outline-offset: 4px; }
+  .attach {
+    position: absolute; left: 8px; top: 12px;
+    width: 30px; height: 30px;
+    background: none; border: none; cursor: pointer; color: var(--ink-soft);
+    display: grid; place-items: center;
+  }
+  .attach::before { content: ''; position: absolute; inset: -7px; }
+  .attach:hover { color: var(--ink); }
+  .attach:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  /* 送出印章 */
+  .seal-send {
+    font-family: var(--font-seal); font-size: 1.5rem; line-height: 1;
+    color: var(--vermilion);
+    width: 56px; height: 56px; align-self: flex-end;
+    background: var(--paper);
+    border: 3px solid var(--vermilion); border-radius: 6px;
+    outline: 1px solid var(--vermilion); outline-offset: 2px;
+    cursor: pointer;
+    transform: rotate(-3deg);
+    filter: url(#rough-sm);
+    transition: transform 180ms var(--ease);
+  }
+  .seal-send:hover:not(:disabled) { transform: rotate(0deg); }
+  .seal-send:active:not(:disabled) { transform: rotate(0deg) scale(.93); }
+  .seal-send:focus-visible { box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--ink); }
+  .seal-send:disabled { color: var(--pencil); border-color: var(--pencil); outline-color: var(--pencil); cursor: not-allowed; }
+  .composer-hint { max-width: 720px; margin: 6px auto 0; font-size: .78rem; color: var(--ink-faint); }
+
+  /* ============ 她的角落 ============ */
+  .her-rail {
+    grid-area: her;
+    position: relative;
+    padding: 22px 22px 18px;
+    background: var(--paper);
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .her-rail::after { content: ''; position: absolute; top: 0; left: 0; bottom: 0; border-left: 1.5px solid var(--pencil); filter: url(#rough-sm); }
+  .portrait { display: block; width: 200px; max-width: 100%; margin: 0 auto; }
+  .her-id { text-align: center; }
+  .her-id .name { font-family: var(--font-seal); font-size: 1.5rem; letter-spacing: .1em; }
+  .her-id .from { font-size: .78rem; color: var(--ink-faint); margin-top: 2px; }
+  .her-id .status { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--ink-soft); margin-top: 4px; }
+  .kuchiguse { text-align: center; }
+  .kuchiguse .bubble {
+    position: relative; display: inline-block;
+    border: 2px solid var(--ink); border-radius: var(--bubble);
+    padding: 6px 14px 8px;
+    font-family: var(--font-seal); font-size: .95rem;
+    filter: url(#rough-sm);
+    background: var(--paper);
+  }
+  .rail-rule { border: none; border-top: 1px solid var(--pencil); filter: url(#rough-sm); }
+  .rail-sec h3 { font-size: .78rem; font-weight: 900; letter-spacing: .06em; color: var(--ink-faint); margin-bottom: 8px; }
+  .rail-list { list-style: none; font-size: .875rem; color: var(--ink-soft); }
+  .rail-list li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .rail-list .k { color: var(--ink-faint); width: 3.5em; flex: none; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot.on { background: var(--ink); }
+  .dot.off { background: var(--paper); border: 1.5px solid var(--ink-faint); }
+  .rail-list a, .rail-sec .more { color: var(--ink-soft); margin-left: auto; font-size: .78rem; white-space: nowrap; padding-left: 8px; }
+  .rail-list a:hover, .rail-sec .more:hover { color: var(--ink); }
+  .ext-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+  .ext-tag { font-size: .78rem; color: var(--ink-soft); border: 1.5px solid var(--pencil); padding: 3px 9px 4px; border-radius: var(--wobble-tag); filter: url(#rough-sm); background: var(--paper); }
+  .rail-sec .head-row { display: flex; align-items: baseline; }
+
+  /* ============ 响应式（结构性折叠） ============ */
+  @media (max-width: 1120px) {
+    .app { grid-template-areas: "top top" "nav main"; grid-template-columns: 236px minmax(0, 1fr); }
+    .her-rail { display: none; }
+  }
+  @media (max-width: 840px) {
+    .app { grid-template-areas: "top" "main"; grid-template-columns: minmax(0, 1fr); }
+    .mokuji { display: none; position: fixed; z-index: 20; top: 56px; bottom: 0; left: 0; width: 260px; border-right: 2px solid var(--ink); }
+    .mokuji.is-open { display: flex; }
+    .menu-btn { display: inline-block; }
+    .topbar .chip { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="rough-lg" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.6"/></filter>
+  <filter id="rough-sm" x="-8%" y="-8%" width="116%" height="116%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2"/></filter>
+  <!-- 头像：线稿头部特写 -->
+  <g id="head-ink">
+    <path d="M120 34 C74 34 50 66 52 104 C53 128 60 144 56 176 L84 162 L84 118 C84 92 100 76 120 76 C140 76 156 92 156 118 L156 162 L184 176 C180 144 187 128 188 104 C190 66 166 34 120 34 Z" fill="oklch(22% 0.01 280)"/>
+    <circle cx="180" cy="64" r="13" fill="oklch(22% 0.01 280)"/>
+    <path d="M84 118 C84 92 100 76 120 76 C140 76 156 92 156 118 C156 142 144 166 120 168 C96 166 84 142 84 118 Z" fill="#fff" stroke="oklch(22% 0.01 280)" stroke-width="2.4"/>
+    <path d="M84 116 C82 84 100 70 120 70 C140 70 158 84 156 116 L148 104 L142 116 L134 100 L126 114 L118 98 L110 114 L102 102 L94 116 L88 106 Z" fill="oklch(22% 0.01 280)"/>
+    <path d="M94 128 C98 124 108 124 112 128" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="3.6" stroke-linecap="round"/>
+    <path d="M128 128 C132 124 142 124 146 128" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="3.6" stroke-linecap="round"/>
+    <circle cx="103" cy="133" r="6.4" fill="oklch(70% 0.12 210)" stroke="oklch(22% 0.01 280)" stroke-width="1.6"/>
+    <circle cx="137" cy="133" r="6.4" fill="oklch(70% 0.12 210)" stroke="oklch(22% 0.01 280)" stroke-width="1.6"/>
+    <circle cx="103" cy="133" r="2.6" fill="oklch(22% 0.01 280)"/>
+    <circle cx="137" cy="133" r="2.6" fill="oklch(22% 0.01 280)"/>
+    <circle cx="101" cy="130.5" r="1.6" fill="#fff"/>
+    <circle cx="135" cy="130.5" r="1.6" fill="#fff"/>
+    <path d="M112 156 C117 161 123 161 128 156" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+</defs></svg>
+
+<div class="app">
+
+  <!-- 顶栏 -->
+  <header class="topbar">
+    <button class="btn-ghost menu-btn" id="menuBtn" aria-label="打开会话列表" aria-expanded="false">☰</button>
+    <span class="logo">2CY AGENT</span>
+    <h1 class="session-title" id="sessionTitle">第 3 话 · 帮我把 PRD 翻成英文</h1>
+    <div class="topbar-right">
+      <span class="chip">Claude · BYOK</span>
+      <button class="btn-ghost" type="button">配对手机</button>
+    </div>
+  </header>
+
+  <!-- 回目 -->
+  <nav class="mokuji" id="mokuji" aria-label="会话列表">
+    <div class="mokuji-head">
+      <h2>回目</h2>
+      <button class="btn-ghost" type="button" id="newSession">＋ 新的一话</button>
+    </div>
+    <button class="session" data-view="s1" type="button">
+      <span class="no">第 1 话</span>
+      <span class="name">白纸一页</span>
+    </button>
+    <button class="session" data-view="s2" type="button">
+      <span class="no">第 2 话</span>
+      <span class="name">角色卡微调记录</span>
+    </button>
+    <button class="session" data-view="s3" type="button" aria-current="true">
+      <span class="no">第 3 话</span>
+      <span class="name">帮我把 PRD 翻成英文</span>
+    </button>
+    <div class="mokuji-foot"><a href="#settings">设置</a></div>
+  </nav>
+
+  <!-- 原稿页 -->
+  <main class="genko">
+    <div class="chat" id="chat" role="log" aria-live="polite">
+
+      <!-- 第 1 话：空状态 -->
+      <div class="chat-view" data-view="s1">
+        <div class="empty">
+          <h3>这一话还是白纸。</h3>
+          <p>跟蕾塞说点什么，或者丢给她一个任务。</p>
+          <div class="starters">
+            <button class="starter" type="button">介绍一下你自己</button>
+            <button class="starter" type="button">查一下今天的 Hacker News 头条</button>
+            <button class="starter" type="button">把这张图转成线稿</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第 2 话 -->
+      <div class="chat-view" data-view="s2">
+        <div class="day-rule">六月三十日</div>
+        <div class="msg msg-user"><div class="box">俄语口癖收敛一点，别每句话都夹。</div></div>
+        <div class="msg msg-her">
+          <span class="msg-avatar" aria-hidden="true"><svg viewBox="30 20 180 180"><use href="#head-ink"/></svg></span>
+          <div class="msg-body">
+            <div class="her-line"><span class="presence"></span><span class="name">蕾塞</span></div>
+            <div class="bubble">Хорошо。角色卡我自己改好了，你过目。</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第 3 话（当前） -->
+      <div class="chat-view is-open" data-view="s3">
+        <div class="day-rule">七月二日</div>
+        <div class="msg msg-user"><div class="box">帮我把 PRD.md 的核心定位翻成英文，要放进 GitHub README 的开头。</div></div>
+        <div class="tool-note"><span class="glyph">↓</span> 读取 PRD.md<span class="state">· 3.2k 字</span></div>
+        <div class="msg msg-her">
+          <span class="msg-avatar" aria-hidden="true"><svg viewBox="30 20 180 180"><use href="#head-ink"/></svg></span>
+          <div class="msg-body">
+          <div class="her-line"><span class="presence"></span><span class="name">蕾塞</span></div>
+          <div class="sheet">
+            <div class="sheet-head">打印稿 · README 开头段</div>
+            <div class="sheet-body">
+              <p><strong>2CY Agent</strong> — an open-source, local-first AI agent. Upload any image and it becomes your own black-and-white line-art character: she gathers her persona from the web, then stays in character whether she's chatting with you or getting real work done.</p>
+              <p>Extensible through MCP servers and skills. Your desktop is the host; your phone is the extension. Bring your own key, keep your own data.</p>
+            </div>
+            <div class="sheet-foot">
+              <button type="button">复制</button>
+              <button type="button">存为文件</button>
+            </div>
+          </div>
+          </div>
+        </div>
+        <div class="msg msg-her">
+          <span class="msg-avatar" aria-hidden="true"><svg viewBox="30 20 180 180"><use href="#head-ink"/></svg></span>
+          <div class="msg-body">
+            <div class="her-line"><span class="presence"></span><span class="name">蕾塞</span></div>
+            <div class="bubble">翻好了。口吻往热血那边偏了一点，要收敛些吗？</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 输入区 -->
+    <div class="composer">
+      <form class="composer-row" id="composerForm">
+        <div class="composer-box">
+          <button class="attach" type="button" aria-label="上传图片（转线稿）">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5 L8 13.5 M2.5 8 L13.5 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+          <textarea id="composerInput" rows="2" placeholder="写下这一格的台词……" aria-label="消息输入"></textarea>
+        </div>
+        <button class="seal-send" id="sendBtn" type="submit" disabled aria-label="发送">送</button>
+      </form>
+      <p class="composer-hint">Enter 发送 · Shift + Enter 换行 · 工具调用前会先问你</p>
+    </div>
+  </main>
+
+  <!-- 她的角落 -->
+  <aside class="her-rail" aria-label="角色与状态">
+    <!-- 立绘：成稿墨线，不过粗糙滤镜 -->
+    <svg class="portrait" viewBox="0 0 240 264" role="img" aria-label="蕾塞的立绘：黑白线稿胸像，丸子头、颈圈与黑领结">
+      <!-- 后发（实墨块） -->
+      <path d="M120 14 C64 14 36 56 38 106 C39 138 50 160 44 206 C60 200 76 190 84 178 L84 118 C84 92 100 76 120 76 C140 76 156 92 156 118 L156 178 C164 190 180 200 196 206 C190 160 201 138 202 106 C204 56 176 14 120 14 Z" fill="oklch(22% 0.01 280)"/>
+      <!-- 丸子头 + 散落发丝 -->
+      <circle cx="194" cy="56" r="16" fill="oklch(22% 0.01 280)"/>
+      <path d="M185 62 C190 52 199 50 205 57" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".85"/>
+      <path d="M203 70 C209 86 201 100 207 116" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2" stroke-linecap="round"/>
+      <!-- 呆毛：一撮翘起的短发 -->
+      <path d="M114 18 C112 10 116 4 122 2 M122 2 C120 8 122 13 126 16" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2.4" stroke-linecap="round"/>
+      <!-- 脸 -->
+      <path d="M84 118 C84 92 100 76 120 76 C140 76 156 92 156 118 C156 142 144 166 120 168 C96 166 84 142 84 118 Z" fill="#fff" stroke="oklch(22% 0.01 280)" stroke-width="2.2"/>
+      <!-- 刘海（实墨块，锯齿下缘） -->
+      <path d="M84 116 C82 84 100 70 120 70 C140 70 158 84 156 116 L148 104 L142 116 L134 100 L126 114 L118 98 L110 114 L102 102 L94 116 L88 106 Z" fill="oklch(22% 0.01 280)"/>
+      <!-- 侧发丝（纸色线切出发丝，短提） -->
+      <path d="M66 116 C63 136 66 152 62 168 M174 116 C177 136 174 152 178 168" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".85"/>
+      <!-- 眉 -->
+      <path d="M96 116 C100 113 106 112 110 114 M130 114 C134 112 140 113 144 116" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2" stroke-linecap="round"/>
+      <!-- 眼：上睫毛粗线 + 冰青瞳 -->
+      <path d="M94 128 C98 124 108 124 112 128" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="3.4" stroke-linecap="round"/>
+      <path d="M128 128 C132 124 142 124 146 128" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="3.4" stroke-linecap="round"/>
+      <circle cx="103" cy="133" r="6" fill="oklch(70% 0.12 210)" stroke="oklch(22% 0.01 280)" stroke-width="1.6"/>
+      <circle cx="137" cy="133" r="6" fill="oklch(70% 0.12 210)" stroke="oklch(22% 0.01 280)" stroke-width="1.6"/>
+      <circle cx="103" cy="133" r="2.4" fill="oklch(22% 0.01 280)"/>
+      <circle cx="137" cy="133" r="2.4" fill="oklch(22% 0.01 280)"/>
+      <circle cx="101" cy="130.5" r="1.5" fill="#fff"/>
+      <circle cx="135" cy="130.5" r="1.5" fill="#fff"/>
+      <path d="M92 132 L88 130 M148 132 L152 130" stroke="oklch(22% 0.01 280)" stroke-width="1.8" stroke-linecap="round"/>
+      <!-- 腮红排线 -->
+      <path d="M86 142 l8 5 M91 140 l8 5 M143 147 l8 -5 M148 149 l8 -5" stroke="oklch(22% 0.01 280)" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
+      <!-- 鼻·口 -->
+      <path d="M119 146 L121 148" stroke="oklch(22% 0.01 280)" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M112 156 C117 161 123 161 128 156" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2" stroke-linecap="round"/>
+      <!-- 颈 + 颈圈 -->
+      <path d="M108 166 C109 176 108 182 104 188 M132 166 C131 176 132 182 136 188" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M103 175 C111 180 129 180 137 175 L137 182 C129 187 111 187 103 182 Z" fill="oklch(22% 0.01 280)"/>
+      <!-- 衬衫领 + 肩 -->
+      <path d="M104 188 C96 192 82 196 66 206 C48 218 40 236 38 258 L202 258 C200 236 192 218 174 206 C158 196 144 192 136 188" fill="#fff" stroke="oklch(22% 0.01 280)" stroke-width="2.2"/>
+      <path d="M104 188 L114 202 L120 194 L126 202 L136 188" fill="#fff" stroke="oklch(22% 0.01 280)" stroke-width="2"/>
+      <!-- 领结（实墨） -->
+      <path d="M120 206 L104 198 L106 216 L120 208 L134 216 L136 198 Z" fill="oklch(22% 0.01 280)"/>
+      <path d="M116 220 L114 236 M124 220 L123 232" stroke="oklch(22% 0.01 280)" stroke-width="2.4" stroke-linecap="round"/>
+      <!-- 衣褶 -->
+      <path d="M76 226 C74 238 74 248 75 258 M164 226 C166 238 166 248 165 258" fill="none" stroke="oklch(22% 0.01 280)" stroke-width="1.4" stroke-linecap="round" opacity=".6"/>
+    </svg>
+    <div class="her-id">
+      <div class="name">蕾塞</div>
+      <div class="from">《电锯人》 · Reze</div>
+      <div class="status"><span class="presence" id="herPresence"></span><span id="herStatus">在线</span></div>
+    </div>
+    <div class="kuchiguse"><span class="bubble">Привет。先喝咖啡，再开工。</span></div>
+
+    <hr class="rail-rule">
+    <section class="rail-sec">
+      <div class="head-row"><h3>角色卡</h3><a class="more" href="#card">编辑</a></div>
+      <ul class="rail-list">
+        <li><span class="k">出处</span>《电锯人》 Chainsaw Man</li>
+        <li><span class="k">性格</span>表面温柔爱逗人，行动果断</li>
+        <li><span class="k">口癖</span>偶尔冒一句俄语</li>
+        <li><span class="k">来源</span>萌娘百科 · Bangumi · 12 条<a href="#regather">重新搜集</a></li>
+      </ul>
+    </section>
+
+    <hr class="rail-rule">
+    <section class="rail-sec">
+      <h3>状态</h3>
+      <ul class="rail-list">
+        <li><span class="k">模型</span><span class="dot on" aria-hidden="true"></span>Claude · BYOK</li>
+        <li><span class="k">主机</span><span class="dot on" aria-hidden="true"></span>本机在线</li>
+        <li><span class="k">手机</span><span class="dot off" aria-hidden="true"></span>未配对<a href="#pair">配对</a></li>
+      </ul>
+    </section>
+
+    <hr class="rail-rule">
+    <section class="rail-sec">
+      <div class="head-row"><h3>扩展</h3><a class="more" href="#ext">管理</a></div>
+      <div class="ext-tags">
+        <span class="ext-tag">web-search</span>
+        <span class="ext-tag">filesystem</span>
+        <span class="ext-tag">bangumi</span>
+        <span class="ext-tag">skill · 转线稿</span>
+        <span class="ext-tag">skill · 角色卡</span>
+      </div>
+    </section>
+  </aside>
+
+</div>
+
+<script>
+  // ---- 会话切换 ----
+  const sessions = document.querySelectorAll('.session');
+  const views = document.querySelectorAll('.chat-view');
+  const titleEl = document.getElementById('sessionTitle');
+  sessions.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      sessions.forEach((b) => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'true');
+      const v = btn.dataset.view;
+      views.forEach((view) => view.classList.toggle('is-open', view.dataset.view === v));
+      titleEl.textContent = btn.querySelector('.no').textContent + ' · ' + btn.querySelector('.name').textContent;
+      document.getElementById('mokuji').classList.remove('is-open');
+      document.getElementById('menuBtn').setAttribute('aria-expanded', 'false');
+    });
+  });
+
+  // ---- 移动端抽屉 ----
+  const menuBtn = document.getElementById('menuBtn');
+  menuBtn.addEventListener('click', () => {
+    const nav = document.getElementById('mokuji');
+    const open = nav.classList.toggle('is-open');
+    menuBtn.setAttribute('aria-expanded', String(open));
+  });
+
+  // ---- 输入与盖章发送 ----
+  const input = document.getElementById('composerInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const form = document.getElementById('composerForm');
+  const chat = document.getElementById('chat');
+  const herStatus = document.getElementById('herStatus');
+  const herPresence = document.getElementById('herPresence');
+
+  input.addEventListener('input', () => { sendBtn.disabled = input.value.trim() === ''; });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+  });
+
+  document.querySelectorAll('.starter').forEach((s) => {
+    s.addEventListener('click', () => { input.value = s.textContent; input.dispatchEvent(new Event('input')); input.focus(); });
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    const view = document.querySelector('.chat-view.is-open');
+    view.querySelector('.empty')?.remove();
+
+    const u = document.createElement('div');
+    u.className = 'msg msg-user';
+    u.innerHTML = '<div class="box"></div>';
+    u.querySelector('.box').textContent = text;
+    view.appendChild(u);
+
+    input.value = '';
+    sendBtn.disabled = true;
+    chat.scrollTop = chat.scrollHeight;
+
+    // 作画中……
+    const t = document.createElement('div');
+    t.className = 'msg msg-her';
+    t.innerHTML = '<span class="msg-avatar" aria-hidden="true"><svg viewBox="30 20 180 180"><use href="#head-ink"/></svg></span>'
+      + '<div class="msg-body"><div class="her-line"><span class="presence is-busy"></span><span class="name">蕾塞</span></div>'
+      + '<div class="bubble thinking"><span class="dots"><i></i><i></i><i></i></span><span class="hint">作画中……</span></div></div>';
+    view.appendChild(t);
+    if (herStatus) { herStatus.textContent = '作画中'; herPresence.classList.add('is-busy'); }
+    chat.scrollTop = chat.scrollHeight;
+
+    setTimeout(() => {
+      t.querySelector('.bubble').outerHTML = '<div class="bubble">收到。这一格交给我。</div>';
+      if (herStatus) { herStatus.textContent = '在线'; herPresence.classList.remove('is-busy'); }
+      chat.scrollTop = chat.scrollHeight;
+    }, 1400);
+  });
+</script>
+</body>
+</html>

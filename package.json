@@ -1,0 +1,11 @@
+{
+  "name": "2cy-agent",
+  "version": "0.1.0",
+  "description": "开源本地优先的二次元 Agent：上传角色图、注入人设、BYOK 对话。",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "license": "MIT"
+}

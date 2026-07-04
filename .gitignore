@@ -1,0 +1,4 @@
+# 本地运行数据：API key、角色卡、头像、会话记录、工作区文件
+data/
+node_modules/
+.DS_Store

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2CY Agent · Product Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF7; --bg-rgb: 250, 250, 247;
+    --surface: #FFFFFF;
+    --ink: #0A0A0A; --ink-rgb: 10, 10, 10;
+    --ink-soft: #3A3A3A; --ink-mute: #8A8A85;
+    --rule: #1A1A1A; --rule-soft: #E2E2DC; --rule-faint: #EDEDE7;
+    --accent: #C8412E; --accent-rgb: 200, 65, 46; --accent-soft: #FBEAE6;
+    --layer-touch: #B8860B; --layer-scene: #2E7D5B;
+    --layer-cap:   #1E5BA8; --layer-data:  #6B3FA0;
+    --flow-down: #1E5BA8; --flow-up: #C8412E;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background-color: var(--bg); }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--ink); min-height: 100vh;
+    background-image:
+      linear-gradient(to right, var(--rule-faint) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--rule-faint) 1px, transparent 1px);
+    background-size: 64px 64px; background-position: -1px -1px;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  }
+  .page { max-width: 1280px; margin: 0 auto; padding: 64px 48px 96px; }
+
+  /* HERO */
+  .hero { padding: 24px 0 40px; border-bottom: 1px solid var(--rule); margin-bottom: 56px; display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 32px; }
+  .hero-left { max-width: 720px; }
+  .hero-eyebrow { font: 600 11px/1 'JetBrains Mono', monospace; letter-spacing: 0.32em; color: var(--ink-mute); margin-bottom: 28px; text-transform: uppercase; display: flex; align-items: center; gap: 14px; }
+  .hero-eyebrow::before { content: ''; width: 32px; height: 1px; background: var(--ink-mute); }
+  .hero-title { font: 700 56px/1 'Inter', sans-serif; letter-spacing: -0.025em; }
+  .hero-title .accent { color: var(--accent); }
+  .hero-subtitle { font: 400 16px/1.7 'Noto Serif SC', serif; color: var(--ink-soft); margin-top: 20px; max-width: 560px; }
+  .hero-meta { text-align: right; font: 500 11px/1.6 'JetBrains Mono', monospace; letter-spacing: 0.15em; color: var(--ink-mute); text-transform: uppercase; }
+  .hero-meta .meta-row { display: block; }
+  .hero-meta .meta-row + .meta-row { margin-top: 6px; }
+  .hero-meta strong { color: var(--ink); font-weight: 600; }
+
+  /* SECTION TITLE */
+  .section-title { display: flex; align-items: baseline; gap: 16px; padding-bottom: 14px; margin-bottom: 28px; border-bottom: 1px solid var(--rule); }
+  .section-title .num { font: 500 13px/1 'JetBrains Mono', monospace; letter-spacing: 0.15em; color: var(--ink-mute); }
+  .section-title .name { font: 600 12px/1 'JetBrains Mono', monospace; letter-spacing: 0.32em; text-transform: uppercase; color: var(--ink); }
+  .section-title .name-cn { font: 500 14px/1 'Noto Serif SC', serif; color: var(--ink-soft); margin-left: auto; }
+
+  /* GRID */
+  .grid-skeleton { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 64px; align-items: start; margin-bottom: 72px; }
+  .skeleton-stack { display: flex; flex-direction: column; gap: 20px; }
+  .flow-stack { display: flex; flex-direction: column; gap: 14px; }
+  .flow-group-title { font: 600 11px/1 'JetBrains Mono', monospace; letter-spacing: 0.28em; color: var(--ink-mute); text-transform: uppercase; margin: 8px 0 6px; display: flex; align-items: center; gap: 10px; }
+  .flow-group-title::after { content: ''; flex: 1; height: 1px; background: var(--rule-soft); }
+  .flow-group-title.up { color: var(--flow-up); }
+  .flow-group-title.down { color: var(--flow-down); }
+
+  /* LAYER */
+  .layer { --layer-color: var(--ink); position: relative; background: var(--surface); border: 1px solid var(--rule-soft); padding: 28px 32px 26px; display: grid; grid-template-columns: 64px 1fr; gap: 24px; transition: border-color 240ms ease, transform 240ms ease, background 240ms ease; }
+  .layer::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--layer-color); transition: width 240ms ease; }
+  .layer:hover { border-color: var(--ink); transform: translateY(-1px); }
+  .layer:hover::before { width: 6px; }
+  .layer.is-highlight { border-color: var(--accent); background: var(--accent-soft); }
+  .layer.is-highlight::before { background: var(--accent); width: 6px; }
+  .layer[data-layer="touch"] { --layer-color: var(--layer-touch); }
+  .layer[data-layer="scene"] { --layer-color: var(--layer-scene); }
+  .layer[data-layer="cap"]   { --layer-color: var(--layer-cap); }
+  .layer[data-layer="data"]  { --layer-color: var(--layer-data); }
+  .layer-index { font: 500 13px/1 'JetBrains Mono', monospace; letter-spacing: 0.15em; color: var(--ink-mute); padding-top: 6px; }
+  .layer-label { font: 600 11px/1 'JetBrains Mono', monospace; letter-spacing: 0.28em; text-transform: uppercase; color: var(--layer-color); margin-bottom: 10px; }
+  .layer-title { font: 600 22px/1.2 'Inter', 'Noto Serif SC', sans-serif; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 6px; }
+  .layer-desc { font: 400 13px/1.6 'Noto Serif SC', serif; color: var(--ink-mute); margin-bottom: 18px; font-style: italic; }
+  .layer-items { display: flex; flex-wrap: wrap; gap: 8px; }
+  .item { display: inline-block; padding: 7px 13px 8px; font: 400 14px/1.4 'Noto Serif SC', serif; color: var(--ink-soft); background: transparent; border: 1px solid var(--rule-soft); border-radius: 2px; transition: all 200ms ease; cursor: default; }
+  .item:hover { border-color: var(--ink); color: var(--ink); background: var(--bg); }
+  .item.is-solo { font: 500 17px/1.3 'Inter', sans-serif; letter-spacing: -0.005em; padding: 14px 22px; border-color: var(--layer-color); color: var(--ink); }
+  .item.is-solo .mono { font: 500 12px/1 'JetBrains Mono', monospace; letter-spacing: 0.15em; color: var(--ink-mute); margin-left: 10px; text-transform: uppercase; }
+
+  /* FLOW CARD */
+  .flow-card { --flow-color: var(--ink); background: var(--surface); border: 1px solid var(--rule-soft); padding: 16px 18px 17px; cursor: pointer; transition: all 240ms ease; position: relative; }
+  .flow-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--flow-color); transition: width 200ms ease; }
+  .flow-card.down { --flow-color: var(--flow-down); }
+  .flow-card.up   { --flow-color: var(--flow-up); }
+  .flow-card:hover { border-color: var(--flow-color); box-shadow: 0 8px 24px -16px rgba(var(--ink-rgb), 0.18); }
+  .flow-card:hover::before { width: 4px; }
+  .flow-arrow { font: 600 11px/1 'JetBrains Mono', monospace; letter-spacing: 0.2em; color: var(--flow-color); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
+  .flow-arrow .glyph { font: 700 14px/1 'Inter', sans-serif; letter-spacing: 0; }
+  .flow-desc { font: 400 13.5px/1.7 'Noto Serif SC', serif; color: var(--ink-soft); }
+  .flow-desc strong { color: var(--ink); font-weight: 600; }
+
+  /* INSIGHT */
+  .insight { border: 1px solid var(--rule); background: var(--surface); display: grid; grid-template-columns: 1fr 1fr 1fr; }
+  .insight-cell { padding: 32px 36px; border-right: 1px solid var(--rule-soft); transition: background 240ms ease; }
+  .insight-cell:last-child { border-right: none; }
+  .insight-cell:hover { background: var(--bg); }
+  .insight-cell .tag { font: 600 11px/1 'JetBrains Mono', monospace; letter-spacing: 0.28em; color: var(--accent); margin-bottom: 16px; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+  .insight-cell .tag::before { content: ''; width: 18px; height: 1px; background: var(--accent); }
+  .insight-cell .title { font: 600 19px/1.3 'Inter', 'Noto Serif SC', sans-serif; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 12px; }
+  .insight-cell .body { font: 400 13.5px/1.75 'Noto Serif SC', serif; color: var(--ink-soft); }
+  .insight-cell .body strong { color: var(--ink); font-weight: 600; }
+
+  /* LEGEND */
+  .legend { margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--rule-soft); display: flex; gap: 32px; flex-wrap: wrap; font: 500 11px/1 'JetBrains Mono', monospace; letter-spacing: 0.15em; color: var(--ink-mute); text-transform: uppercase; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-item .bar { width: 16px; height: 3px; }
+  .legend-item .glyph { font: 700 13px/1 'Inter', sans-serif; letter-spacing: 0; }
+  .footnote { margin-top: 32px; font: 400 11px/1.6 'JetBrains Mono', monospace; letter-spacing: 0.1em; color: var(--ink-mute); text-transform: uppercase; }
+
+  /* ANIMATIONS */
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .hero-eyebrow  { animation: rise 600ms 0ms   both cubic-bezier(.22,.61,.36,1); }
+  .hero-title    { animation: rise 700ms 100ms both cubic-bezier(.22,.61,.36,1); }
+  .hero-subtitle { animation: rise 600ms 250ms both cubic-bezier(.22,.61,.36,1); }
+  .hero-meta     { animation: rise 500ms 400ms both cubic-bezier(.22,.61,.36,1); }
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity 700ms cubic-bezier(.22,.61,.36,1), transform 700ms cubic-bezier(.22,.61,.36,1); }
+  .reveal.is-in { opacity: 1; transform: translateY(0); }
+  .skeleton-stack .reveal:nth-child(1) { transition-delay: 0ms; }
+  .skeleton-stack .reveal:nth-child(2) { transition-delay: 80ms; }
+  .skeleton-stack .reveal:nth-child(3) { transition-delay: 160ms; }
+  .skeleton-stack .reveal:nth-child(4) { transition-delay: 240ms; }
+  .flow-stack .reveal:nth-child(odd)  { transition-delay: 100ms; }
+  .flow-stack .reveal:nth-child(even) { transition-delay: 180ms; }
+  .insight .insight-cell:nth-child(1) { transition-delay: 0ms; }
+  .insight .insight-cell:nth-child(2) { transition-delay: 100ms; }
+  .insight .insight-cell:nth-child(3) { transition-delay: 200ms; }
+
+  /* RESPONSIVE */
+  @media (max-width: 1023px) {
+    .grid-skeleton { grid-template-columns: 1fr; gap: 48px; }
+    .insight { grid-template-columns: 1fr; }
+    .insight-cell { border-right: none; border-bottom: 1px solid var(--rule-soft); }
+    .insight-cell:last-child { border-bottom: none; }
+    .hero { grid-template-columns: 1fr; }
+    .hero-meta { text-align: left; }
+  }
+  @media (max-width: 719px) {
+    .page { padding: 32px 24px 64px; }
+    .hero-title { font-size: 36px; }
+    .layer { grid-template-columns: 1fr; gap: 12px; padding: 22px 22px 22px; }
+    .layer-index { padding-top: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">Product Architecture · 产品架构拆解</div>
+      <h1 class="hero-title">2CY Agent<span class="accent">.</span></h1>
+      <p class="hero-subtitle">开源的本地优先 AI Agent——上传任意图片生成黑白线稿风二次元角色，自动搜集人设扮演该角色；MCP 与 Skill 双通道扩展能力，电脑做主机、手机随时接续对话。生产力为骨，人设为皮。</p>
+    </div>
+    <div class="hero-meta">
+      <span class="meta-row">Method <strong>04-Layer Skeleton</strong></span>
+      <span class="meta-row">Subject <strong>2CY Agent（暂定名）</strong></span>
+      <span class="meta-row">Issue <strong>№ 001</strong></span>
+    </div>
+  </header>
+
+  <section>
+    <div class="section-title">
+      <span class="num">01 /</span>
+      <span class="name">Four-Layer Skeleton</span>
+      <span class="name-cn">四层骨架 · 触达 → 场景 → 能力 → 数据</span>
+    </div>
+
+    <div class="grid-skeleton">
+
+      <div class="skeleton-stack">
+
+        <article id="layer-touch" class="layer reveal" data-layer="touch">
+          <div class="layer-index">01</div>
+          <div class="layer-main">
+            <div class="layer-label">Touchpoint · 触达层</div>
+            <h2 class="layer-title">电脑是主机，手机是延伸，GitHub 是入口</h2>
+            <p class="layer-desc">本地优先的混合形态——Agent 与数据都在用户电脑上，手机与社区只是通向它的两条路。</p>
+            <div class="layer-items">
+              <span class="item">桌面应用 · 本地服务 + 内嵌 Web UI</span>
+              <span class="item">手机 H5 远程接入 · 配对码 / 可自托管中转</span>
+              <span class="item">GitHub 开源仓库 · 分发与社区入口</span>
+            </div>
+          </div>
+        </article>
+
+        <article id="layer-scene" class="layer reveal" data-layer="scene">
+          <div class="layer-index">02</div>
+          <div class="layer-main">
+            <div class="layer-label">Scenario · 场景层</div>
+            <h2 class="layer-title">一个角色，两副面孔：既陪你聊，也替你干</h2>
+            <p class="layer-desc">三个场景共享同一个角色——先共创出"她"，然后闲聊与干活都不出戏。</p>
+            <div class="layer-items">
+              <span class="item">角色共创 · 上传图 → 转线稿 → 角色卡微调</span>
+              <span class="item">陪伴闲聊 · 以角色人格日常互动</span>
+              <span class="item">任务执行 · 调工具跑技能完成真实任务</span>
+            </div>
+          </div>
+        </article>
+
+        <article id="layer-cap" class="layer reveal" data-layer="cap">
+          <div class="layer-index">03</div>
+          <div class="layer-main">
+            <div class="layer-label">Capability · 能力层</div>
+            <h2 class="layer-title">人格注入 × 本地图像 × 可插拔工具运行时</h2>
+            <p class="layer-desc">扩展接入下沉于此——MCP 与 Skill 不是场景，而是能力的可插拔来源。</p>
+            <div class="layer-items">
+              <span class="item">BYOK 模型抽象层 · Claude / OpenAI 协议</span>
+              <span class="item">人格注入引擎 · 角色卡 → System Prompt</span>
+              <span class="item">联网人设搜集 · Web Search + 结构化抽取</span>
+              <span class="item">线稿转换 · 本地轻量模型 CPU 可跑 / SD 重绘可选</span>
+              <span class="item">MCP 宿主 · stdio / HTTP</span>
+              <span class="item">Skill 运行时 · 链接 / skill.md 拉取解析加载</span>
+              <span class="item">跨端同步与中转 · 对话同步 + 本地工具降级</span>
+            </div>
+          </div>
+        </article>
+
+        <article id="layer-data" class="layer reveal" data-layer="data">
+          <div class="layer-index">04</div>
+          <div class="layer-main">
+            <div class="layer-label">Data · 数据层</div>
+            <h2 class="layer-title">数据在用户设备，壁垒在社区仓库</h2>
+            <p class="layer-desc">本地优先存储保隐私，社区角色卡库做跨用户沉淀——开源项目唯一带得走的数据资产。</p>
+            <div class="layer-items">
+              <span class="item">用户上传图片 · 形象源</span>
+              <span class="item">公开角色百科 · 萌娘百科 / Bangumi / Fandom</span>
+              <span class="item">角色卡资产 · 结构化人设 · 开放格式</span>
+              <span class="item">社区角色卡共享库 · GitHub 承载 · 一键导入</span>
+              <span class="item">本地会话历史</span>
+              <span class="item">MCP / Skill 配置与包</span>
+              <span class="item">开放模型权重 · HuggingFace 首启拉取</span>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+      <aside class="flow-stack">
+
+        <div class="flow-group-title down">↓ Sediment · 沉淀流</div>
+
+        <div class="flow-card down reveal" data-layers="layer-data,layer-cap,layer-scene">
+          <div class="flow-arrow"><span class="glyph">↓</span>Data → Capability → Scenario</div>
+          <p class="flow-desc"><strong>公开角色百科</strong>经人设搜集与人格注入，变成角色共创场景里那张"会说话"的角色卡——干活闲聊都不出戏。</p>
+        </div>
+
+        <div class="flow-card down reveal" data-layers="layer-data,layer-cap">
+          <div class="flow-arrow"><span class="glyph">↓</span>Data → Capability</div>
+          <p class="flow-desc"><strong>开放模型权重</strong>首启自动拉取，驱动本地线稿转换——任意彩图落地成统一黑白调性，CPU 即可运行。</p>
+        </div>
+
+        <div class="flow-card down reveal" data-layers="layer-data,layer-cap,layer-scene">
+          <div class="flow-arrow"><span class="glyph">↓</span>Data → Capability → Scenario</div>
+          <p class="flow-desc"><strong>社区角色卡库</strong>通过一键导入进入共创场景——新用户零配置即获得社区调教成熟的角色。</p>
+        </div>
+
+        <div class="flow-group-title up" style="margin-top: 12px;">↑ Backflow · 回流</div>
+
+        <div class="flow-card up reveal" data-layers="layer-scene,layer-data">
+          <div class="flow-arrow"><span class="glyph">↑</span>Scenario → Data</div>
+          <p class="flow-desc"><strong>用户微调后的角色卡</strong>从共创场景回流社区共享库——越多人用，库越丰富，生态越厚。</p>
+        </div>
+
+        <div class="flow-card up reveal" data-layers="layer-scene,layer-data,layer-cap">
+          <div class="flow-arrow"><span class="glyph">↑</span>Scenario → Data → Capability</div>
+          <p class="flow-desc"><strong>对话中的纠偏</strong>（口癖跑偏、性格失真被用户修正）迭代角色卡，反哺人格注入——扮演越来越准。</p>
+        </div>
+
+        <div class="flow-card up reveal" data-layers="layer-touch,layer-data">
+          <div class="flow-arrow"><span class="glyph">↑</span>Touchpoint → Data</div>
+          <p class="flow-desc"><strong>GitHub 社区</strong>以 PR 形式回流 Skill、MCP 配置与角色卡——开源入口同时是数据资产的进水口。</p>
+        </div>
+
+      </aside>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">
+      <span class="num">02 /</span>
+      <span class="name">Architecture Insights</span>
+      <span class="name-cn">架构洞察 · 壁垒、替代风险与深挖方向</span>
+    </div>
+
+    <div class="insight">
+      <div class="insight-cell reveal">
+        <div class="tag">Moat · 最有壁垒</div>
+        <h3 class="title">数据层 · 社区角色卡库</h3>
+        <p class="body">本地优先架构下，它是<strong>唯一能跨用户沉淀的资产</strong>。角色卡随使用被不断调准并回流社区——fork 拿得走代码，<strong>拿不走生态</strong>。开放格式 + GitHub 承载，成本极低而复利极高。</p>
+      </div>
+      <div class="insight-cell reveal">
+        <div class="tag">Risk · 最易替代</div>
+        <h3 class="title">能力层 · BYOK 模型底座</h3>
+        <p class="body">对话、工具调用来自第三方大模型，线稿转换用的是开放权重——<strong>任何同类产品都能获得同款底座</strong>。能力层自身无壁垒，必须靠场景体验与数据生态在上下两层构筑防御。</p>
+      </div>
+      <div class="insight-cell reveal">
+        <div class="tag">Bet · 可深挖方向</div>
+        <h3 class="title">场景层 · 角色共创首体验</h3>
+        <p class="body">"上传任意图 → 变成会扮演的角色"是天然的<strong>传播引爆点</strong>。把首次体验打磨到极致——转线稿质量、人设搜集准确度、三分钟内见到"她"开口——决定开源冷启动的成败。</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="legend">
+      <div class="legend-item"><span class="bar" style="background: var(--layer-touch)"></span>Touchpoint · 触达</div>
+      <div class="legend-item"><span class="bar" style="background: var(--layer-scene)"></span>Scenario · 场景</div>
+      <div class="legend-item"><span class="bar" style="background: var(--layer-cap)"></span>Capability · 能力</div>
+      <div class="legend-item"><span class="bar" style="background: var(--layer-data)"></span>Data · 数据</div>
+      <div class="legend-item"><span class="glyph" style="color: var(--flow-down)">↓</span>Sediment · 沉淀</div>
+      <div class="legend-item"><span class="glyph" style="color: var(--flow-up)">↑</span>Backflow · 回流</div>
+    </div>
+    <div class="footnote">
+      Method · Four-Layer Skeleton &nbsp;/&nbsp; Hover flow-cards to highlight related layers &nbsp;/&nbsp; Set in Inter, Noto Serif SC, JetBrains Mono
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+  document.querySelectorAll('.flow-card').forEach((card) => {
+    const ids = (card.dataset.layers || '').split(',').filter(Boolean);
+    const enter = () => ids.forEach((id) => document.getElementById(id)?.classList.add('is-highlight'));
+    const leave = () => ids.forEach((id) => document.getElementById(id)?.classList.remove('is-highlight'));
+    card.addEventListener('mouseenter', enter);
+    card.addEventListener('mouseleave', leave);
+    card.addEventListener('focusin', enter);
+    card.addEventListener('focusout', leave);
+  });
+</script>
+
+</body>
+</html>
