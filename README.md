@@ -6,16 +6,30 @@
 
 ## 快速开始（v0.1 · 电脑端）
 
-需要 Node.js 18+。
+唯一的前置要求：安装 [Node.js](https://nodejs.org/) 18 或更高版本（下载 LTS 版一路下一步即可）。本项目零依赖，**不需要** `npm install`。
+
+### 方式一：下载即用（推荐，不需要会 git）
+
+1. 点本页面右上角绿色的 **Code** 按钮 → **Download ZIP**，下载后解压；
+2. 双击启动脚本：
+   - **Windows**：双击 `启动-Windows.bat`；
+   - **macOS**：双击 `启动-Mac.command`（如果系统提示「无法验证开发者」，右键点击文件 → 选「打开」即可；若提示没有权限，先在终端里对项目目录执行 `chmod +x 启动-Mac.command`）；
+   - **Linux**：终端执行 `bash start-linux.sh`；
+3. 浏览器会自动打开 http://127.0.0.1:2333 。
+
+### 方式二：命令行
 
 ```bash
-node server.mjs
-# 或 npm start
+git clone https://github.com/c18229039407-arch/2cy-agent.git
+cd 2cy-agent
+node server.mjs   # 或 npm start
 ```
 
-打开 http://127.0.0.1:2333 ：
+然后打开 http://127.0.0.1:2333 。
 
-1. 点右上角**设置**，选择提供商并填入你自己的 API key（BYOK，只存本机）；
+### 首次使用
+
+1. 点右上角**设置**，选择提供商并填入你自己的 API key（BYOK，只存你本机，不会上传给任何人）；
 2. 在右栏上传角色图、填角色名，可以让模型帮你起草人设卡；
 3. 开始对话——她会带着人设跟你聊，也能认真干活。
 
