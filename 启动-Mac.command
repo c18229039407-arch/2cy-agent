@@ -9,6 +9,5 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "正在启动 2CY Agent，稍后会自动打开浏览器 ..."
-( sleep 2; open "http://127.0.0.1:2333" ) &
+echo "正在启动 2CY Agent，浏览器将自动打开 ..."
 node server.mjs

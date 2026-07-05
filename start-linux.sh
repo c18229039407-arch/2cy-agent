@@ -8,5 +8,4 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 echo "正在启动 2CY Agent ..."
-( sleep 2; xdg-open "http://127.0.0.1:2333" >/dev/null 2>&1 ) &
 node server.mjs

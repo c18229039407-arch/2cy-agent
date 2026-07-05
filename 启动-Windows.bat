@@ -14,7 +14,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo 正在启动 2CY Agent，稍后会自动打开浏览器 ...
-start "" cmd /c "timeout /t 2 >nul & start http://127.0.0.1:2333"
+echo 正在启动 2CY Agent，浏览器将自动打开 ...
 node server.mjs
 pause

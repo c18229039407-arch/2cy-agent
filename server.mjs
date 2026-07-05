@@ -2,6 +2,7 @@
 // 架构：本地 HTTP 服务 = 静态 UI + JSON API + Claude 转发（BYOK）。
 // 数据全部落在 ./data/，不出用户设备；API key 仅存本地。
 import { createServer } from 'node:http';
+import { exec } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile, mkdir, readdir, unlink, chmod, stat } from 'node:fs/promises';
 import { join, extname, normalize, dirname } from 'node:path';
@@ -654,7 +655,9 @@ async function handleStatic(req, res, url) {
   if (url.pathname === '/' || url.pathname === '') file = join(PUBLIC, 'index.html');
   try {
     const buf = await readFile(file);
-    res.writeHead(200, { 'content-type': MIME[extname(file)] || 'application/octet-stream' });
+    const headers = { 'content-type': MIME[extname(file)] || 'application/octet-stream' };
+    if (file.endsWith('.html')) headers['cache-control'] = 'no-cache'; // 升级后普通刷新即可见新版
+    res.writeHead(200, headers);
     res.end(buf);
   } catch {
     res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
@@ -673,6 +676,14 @@ createServer(async (req, res) => {
     return send(res, 500, { error: e.message || 'internal error' });
   }
 }).listen(PORT, HOST, () => {
-  console.log(`2CY Agent 已启动 → http://${HOST}:${PORT}`);
+  const url = `http://${HOST}:${PORT}`;
+  console.log(`2CY Agent 已启动 → ${url}`);
   console.log('数据目录：' + DATA + '（对话、角色卡、API key 均只存本机）');
+  // 自动打开浏览器（设 NO_OPEN=1 可关闭）
+  if (!process.env.NO_OPEN) {
+    const cmd = process.platform === 'darwin' ? `open ${url}`
+      : process.platform === 'win32' ? `start "" ${url}`
+      : `xdg-open ${url}`;
+    setTimeout(() => exec(cmd, () => {}), 300);
+  }
 });
