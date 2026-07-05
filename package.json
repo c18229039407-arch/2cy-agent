@@ -1,6 +1,6 @@
 {
   "name": "2cy-agent",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "开源本地优先的二次元 Agent：上传角色图、注入人设、BYOK 对话。",
   "type": "module",
   "engines": { "node": ">=18" },

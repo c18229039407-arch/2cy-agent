@@ -433,6 +433,7 @@
             <div class="row-btns" style="justify-content:flex-start;flex-wrap:wrap;gap:14px">
               <label class="mem-toggle" style="font-size:.875rem"><input type="checkbox" id="memEnabledToggle">开启记忆</label>
               <label class="mem-toggle" style="font-size:.875rem"><input type="checkbox" id="autoDistillToggle">自动沉淀（切换或关闭会话时自动总结，每次消耗一次模型调用）</label>
+              <label class="mem-toggle" style="font-size:.875rem"><input type="checkbox" id="shortTermToggle">短期记忆（长对话自动压缩「前情提要」，她不再忘记开头聊过什么；仅在超长对话中偶尔消耗一次模型调用）</label>
               <button class="btn" type="button" id="distillNowBtn">立即沉淀当前会话</button>
             </div>
             <div><label for="memProfileInput">用户画像</label><textarea id="memProfileInput" rows="3" placeholder="她眼中的你。可以手写，也可以由「沉淀」自动生成。"></textarea></div>
@@ -463,10 +464,10 @@
 
         <section data-panel="about" hidden>
           <div class="about-block">
-            <p class="about-title">2CY AGENT <span>v0.4</span></p>
+            <p class="about-title">2CY AGENT <span>v0.5</span></p>
             <p class="sub">开源、本地优先的二次元 Agent——上传一张图，让你喜欢的角色住进电脑。界面是一张日漫黑白线稿风的「作者原稿桌」。</p>
             <ul class="rail-list">
-              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 记忆与画像（自动/手动沉淀） · 技能面板 · 原生联网搜索 · 会话搜索与时间分组</li>
+              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 记忆与画像（自动/手动沉淀） · 短期记忆前情提要 · 技能面板 · 原生联网搜索 · 会话搜索与时间分组</li>
               <li><span class="k">开发中</span>转线稿 · MCP · 手机端</li>
               <li><span class="k">许可</span>MIT · 角色版权归原权利人，上传内容用户自负</li>
             </ul>
@@ -949,6 +950,7 @@ async function loadMemoryPanel() {
   memory = await api('/api/memory').catch(() => memory);
   $('memEnabledToggle').checked = memory.enabled;
   $('autoDistillToggle').checked = memory.autoDistill === true;
+  $('shortTermToggle').checked = memory.shortTerm !== false;
   $('memProfileInput').value = memory.profile || '';
   const list = $('memFactList');
   list.innerHTML = memory.facts.length
@@ -968,6 +970,9 @@ $('memEnabledToggle').addEventListener('change', async () => {
 });
 $('autoDistillToggle').addEventListener('change', async () => {
   memory = await api('/api/memory', { method: 'PUT', body: JSON.stringify({ autoDistill: $('autoDistillToggle').checked }) }).catch(() => memory);
+});
+$('shortTermToggle').addEventListener('change', async () => {
+  memory = await api('/api/memory', { method: 'PUT', body: JSON.stringify({ shortTerm: $('shortTermToggle').checked }) }).catch(() => memory);
 });
 $('distillNowBtn').addEventListener('click', async () => {
   if (!activeId) { $('memMsg').textContent = '当前没有会话。'; return; }

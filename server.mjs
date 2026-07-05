@@ -60,7 +60,7 @@ const memoryFile = join(DATA, 'memory.json');
 // ---------- 记忆（v0.2）：画像 + 事实清单，全部本机、可见可删 ----------
 async function getMemory() {
   const m = (await readJSON(memoryFile, {})) || {};
-  return { enabled: m.enabled !== false, autoDistill: m.autoDistill === true, profile: m.profile || '', facts: Array.isArray(m.facts) ? m.facts : [] };
+  return { enabled: m.enabled !== false, autoDistill: m.autoDistill === true, shortTerm: m.shortTerm !== false, profile: m.profile || '', facts: Array.isArray(m.facts) ? m.facts : [] };
 }
 async function saveMemory(m) { await writeJSON(memoryFile, m); }
 function addFact(memory, text, from) {
@@ -275,6 +275,33 @@ function stepLabel(name, input) {
   return name;
 }
 
+// ---------- 短期记忆（v0.5）：长对话后台压缩为前情提要 ----------
+const RECENT_WINDOW = 24;   // 每轮原文携带的最近消息数
+const COMPRESS_BATCH = 16;  // 积累多少条未压缩消息后触发一次压缩
+async function compressSession(file, config) {
+  try {
+    const s = await readJSON(file);
+    if (!s) return;
+    const from = s.summarizedUpTo || 0;
+    const to = s.messages.length - RECENT_WINDOW;
+    if (to - from < COMPRESS_BATCH) return;
+    const chunk = s.messages.slice(from, to)
+      .map((m) => (m.role === 'user' ? '用户' : '助手') + '：' + String(m.text || '').slice(0, 400))
+      .join('\n');
+    const { text } = await callLLM(config, {
+      system: '你是对话压缩助手。把旧的前情提要与新增对话合并为一段新的前情提要：保留关键事实、决定、任务进展和情感基调，300 字以内，只输出提要本身。',
+      messages: [{ role: 'user', content: `旧前情提要：${s.summary || '（无）'}\n\n新增对话：\n${chunk}` }],
+    });
+    if (!text) return;
+    // 重新读取后落盘，尽量避免覆盖压缩期间新写入的消息
+    const fresh = await readJSON(file);
+    if (!fresh) return;
+    fresh.summary = String(text).trim().slice(0, 1200);
+    fresh.summarizedUpTo = to;
+    await writeJSON(file, fresh);
+  } catch { /* 压缩失败静默跳过，下轮再试 */ }
+}
+
 // ---------- 三种模式的一轮对话 ----------
 // chat：直接回复 | expert：思维链 | agent：工具循环
 const MAX_TOOL_ROUNDS = 6;
@@ -383,6 +410,7 @@ async function handleApi(req, res, url) {
     const memory = await getMemory();
     if (typeof body.enabled === 'boolean') memory.enabled = body.enabled;
     if (typeof body.autoDistill === 'boolean') memory.autoDistill = body.autoDistill;
+    if (typeof body.shortTerm === 'boolean') memory.shortTerm = body.shortTerm;
     if (typeof body.profile === 'string') memory.profile = body.profile.trim().slice(0, 600);
     await saveMemory(memory);
     return send(res, 200, memory);
@@ -624,10 +652,14 @@ async function handleApi(req, res, url) {
       const memory = await getMemory();
       let system = buildSystemPrompt(card, config, memory);
       if (mode === 'agent') system += '\n\n你现在处于 Agent 模式，可以调用工具（抓网页、读写工作区文件、remember 记忆）完成任务。需要时果断使用工具，多步任务可以连续调用；用户透露值得长期记住的信息时用 remember 记下；完成后用中文简洁汇报结果。';
+      // 短期记忆：有前情提要时注入，并缩小携带的原文窗口
+      const useShortTerm = memory.shortTerm && s.summary;
+      if (useShortTerm) system += '\n\n本话前情提要（此前对话的压缩摘要，自然衔接，不要复述）：\n' + s.summary;
+      const windowSize = useShortTerm ? RECENT_WINDOW : 60;
       try {
         const { text: reply, thinking, steps } = await runTurn(config, {
           system,
-          history: s.messages.slice(-60).map((m) => ({ role: m.role, content: m.text })),
+          history: s.messages.slice(-windowSize).map((m) => ({ role: m.role, content: m.text })),
           mode,
         });
         const record = { role: 'assistant', text: reply, at: new Date().toISOString() };
@@ -636,6 +668,10 @@ async function handleApi(req, res, url) {
         s.messages.push(record);
         s.updatedAt = new Date().toISOString();
         await writeJSON(file, s);
+        // 长对话后台压缩前情提要（不阻塞响应；关闭短期记忆则跳过）
+        if (memory.shortTerm && s.messages.length - (s.summarizedUpTo || 0) >= RECENT_WINDOW + COMPRESS_BATCH) {
+          compressSession(file, config);
+        }
         return send(res, 200, { reply, thinking: record.thinking || '', steps: record.steps || [], title: s.title });
       } catch (e) {
         s.updatedAt = new Date().toISOString();
