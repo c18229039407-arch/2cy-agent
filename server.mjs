@@ -2,7 +2,7 @@
 // 架构：本地 HTTP 服务 = 静态 UI + JSON API + Claude 转发（BYOK）。
 // 数据全部落在 ./data/，不出用户设备；API key 仅存本地。
 import { createServer } from 'node:http';
-import { exec } from 'node:child_process';
+import { exec, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile, mkdir, readdir, unlink, chmod, stat } from 'node:fs/promises';
 import { join, extname, normalize, dirname } from 'node:path';
@@ -193,6 +193,93 @@ function extractJSON(text) {
   return JSON.parse(match[0]);
 }
 
+// ---------- MCP（v0.7）：stdio 传输的 MCP 客户端，零依赖 ----------
+const mcpFile = join(DATA, 'mcp.json');
+async function getMcpServers() { return (await readJSON(mcpFile, [])) || []; }
+async function saveMcpServers(list) { await writeJSON(mcpFile, list); }
+
+const mcpClients = new Map();     // serverId -> McpClient
+let mcpToolIndex = new Map();     // 命名空间工具名 -> { cfg, real, label }
+
+class McpClient {
+  constructor(cfg) { this.cfg = cfg; this.nextId = 1; this.pending = new Map(); this.tools = []; this.ready = null; this.proc = null; }
+  start() {
+    if (this.ready) return this.ready;
+    this.ready = new Promise((resolve, reject) => {
+      const parts = String(this.cfg.command).trim().split(/\s+/);
+      let settled = false;
+      const fail = (e) => { if (!settled) { settled = true; this.ready = null; reject(e); } };
+      try {
+        this.proc = spawn(parts[0], parts.slice(1), { stdio: ['pipe', 'pipe', 'pipe'], shell: process.platform === 'win32' });
+      } catch (e) { return fail(new Error('MCP 启动失败：' + e.message)); }
+      let buf = '';
+      this.proc.stdout.on('data', (d) => {
+        buf += d.toString();
+        let i;
+        while ((i = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+          if (!line) continue;
+          try { this.onMessage(JSON.parse(line)); } catch {}
+        }
+      });
+      this.proc.on('error', (e) => fail(new Error('MCP 启动失败：' + e.message)));
+      this.proc.on('exit', () => { this.ready = null; this.proc = null; for (const p of this.pending.values()) p.reject(new Error('MCP 服务已退出')); this.pending.clear(); });
+      setTimeout(() => fail(new Error('MCP 初始化超时（15s）')), 15_000);
+      this.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: '2cy-agent', version: '0.7.0' } })
+        .then(() => { this.notify('notifications/initialized', {}); return this.request('tools/list', {}); })
+        .then((r) => { this.tools = r?.tools || []; if (!settled) { settled = true; resolve(this); } })
+        .catch(fail);
+    });
+    return this.ready;
+  }
+  send(msg) { this.proc?.stdin.write(JSON.stringify(msg) + '\n'); }
+  notify(method, params) { this.send({ jsonrpc: '2.0', method, params }); }
+  request(method, params) {
+    const id = this.nextId++;
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, { resolve, reject });
+      this.send({ jsonrpc: '2.0', id, method, params });
+      setTimeout(() => { if (this.pending.has(id)) { this.pending.delete(id); reject(new Error('MCP 请求超时：' + method)); } }, 30_000);
+    });
+  }
+  onMessage(m) {
+    if (m.id !== undefined && this.pending.has(m.id)) {
+      const p = this.pending.get(m.id); this.pending.delete(m.id);
+      m.error ? p.reject(new Error(m.error.message || 'MCP 错误')) : p.resolve(m.result);
+    }
+  }
+  async callTool(name, args) {
+    const r = await this.request('tools/call', { name, arguments: args || {} });
+    const text = (r?.content || []).map((c) => (c.type === 'text' ? c.text : `[${c.type}]`)).join('\n');
+    return text.slice(0, 8000) || '（无输出）';
+  }
+  stop() { try { this.proc?.kill(); } catch {} mcpClients.delete(this.cfg.id); }
+}
+async function getMcpClient(cfg) {
+  let c = mcpClients.get(cfg.id);
+  if (!c) { c = new McpClient(cfg); mcpClients.set(cfg.id, c); }
+  await c.start();
+  return c;
+}
+// 收集所有启用的 MCP 服务的工具（命名空间隔离），返回工具定义数组
+async function collectMcpTools() {
+  const servers = await getMcpServers();
+  const index = new Map(); const defs = [];
+  for (const cfg of servers) {
+    if (cfg.enabled === false) continue;
+    try {
+      const c = await getMcpClient(cfg);
+      for (const t of c.tools) {
+        const nsName = `mcp_${cfg.id}_${t.name}`.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+        index.set(nsName, { cfg, real: t.name, label: `${cfg.name} · ${t.name}` });
+        defs.push({ name: nsName, description: `[MCP:${cfg.name}] ${t.description || ''}`.slice(0, 500), input_schema: t.inputSchema || { type: 'object', properties: {} } });
+      }
+    } catch { /* 单个服务失败不影响其他 */ }
+  }
+  mcpToolIndex = index;
+  return defs;
+}
+
 // ---------- 第三方搜索（v0.6）：Tavily，补齐无原生搜索的提供商 ----------
 const WEB_SEARCH_TOOL = {
   name: 'web_search',
@@ -280,6 +367,12 @@ async function execTool(name, input) {
   if (name === 'web_search') {
     return await tavilySearch(input.query);
   }
+  if (name.startsWith('mcp_')) {
+    const t = mcpToolIndex.get(name);
+    if (!t) throw new Error('MCP 工具不可用：' + name);
+    const c = await getMcpClient(t.cfg);
+    return await c.callTool(t.real, input);
+  }
   if (name === 'remember') {
     const memory = await getMemory();
     if (!memory.enabled) return '记忆功能已被用户关闭，本条未保存。';
@@ -297,6 +390,7 @@ function stepLabel(name, input) {
   if (name === 'list_files') return '查看工作区文件';
   if (name === 'remember') return `记住 · ${String(input.fact || '').slice(0, 40)}`;
   if (name === 'web_search') return `联网搜索 · ${String(input.query || '').slice(0, 40)}`;
+  if (name.startsWith('mcp_')) return `MCP · ${mcpToolIndex.get(name)?.label || name}`;
   return name;
 }
 
@@ -330,7 +424,7 @@ async function compressSession(file, config) {
 // ---------- 三种模式的一轮对话 ----------
 // chat：直接回复 | expert：思维链 | agent：工具循环
 const MAX_TOOL_ROUNDS = 6;
-async function runTurn(config, { system, history, mode }) {
+async function runTurn(config, { system, history, mode, mcpDefs = [] }) {
   const protocol = (config.provider || 'anthropic') === 'anthropic' ? 'anthropic' : 'openai';
   const model = config.model || DEFAULT_MODEL;
   const steps = [];
@@ -345,7 +439,7 @@ async function runTurn(config, { system, history, mode }) {
       messages: history.map((m) => ({ role: m.role, content: m.content })),
     };
     if (mode === 'expert') body.thinking = { type: 'adaptive', display: 'summarized' };
-    if (mode === 'agent') body.tools = TOOLS;
+    if (mode === 'agent') body.tools = [...TOOLS, ...mcpDefs];
     // Anthropic 官方联网搜索（服务端工具，按次计费走用户自己的 key）
     if (config.webSearch === true) {
       body.tools = [...(body.tools || []), { type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];
@@ -384,7 +478,7 @@ async function runTurn(config, { system, history, mode }) {
   const body = { model, max_tokens: 8192, messages: oaMessages };
   const oaTools = [];
   if (mode === 'agent') {
-    oaTools.push(...TOOLS.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } })));
+    oaTools.push(...[...TOOLS, ...mcpDefs].map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } })));
   }
   // 提供商原生联网搜索：Kimi 内建 $web_search（搜索在服务端执行，参数原样回传即可）；GLM 的 web_search 工具
   if (config.webSearch === true && config.provider === 'kimi') {
@@ -497,6 +591,56 @@ async function handleApi(req, res, url) {
       return send(res, 200, { profile: memory.profile, added, total: memory.facts.length });
     } catch (e) {
       return send(res, e.status || 502, { error: e.message });
+    }
+  }
+
+  // ---------- MCP（v0.7） ----------
+  if (req.method === 'GET' && url.pathname === '/api/mcp') {
+    const servers = await getMcpServers();
+    const out = [];
+    for (const cfg of servers) {
+      let status = 'off', tools = [];
+      if (cfg.enabled !== false) {
+        try { const c = await getMcpClient(cfg); status = 'ok'; tools = c.tools.map((t) => t.name); }
+        catch (e) { status = '连接失败：' + e.message; }
+      }
+      out.push({ id: cfg.id, name: cfg.name, command: cfg.command, enabled: cfg.enabled !== false, status, tools });
+    }
+    return send(res, 200, out);
+  }
+  if (req.method === 'POST' && url.pathname === '/api/mcp') {
+    const body = await readBody(req);
+    if (!body.name || !body.command) return send(res, 400, { error: '需要名称和启动命令' });
+    const servers = await getMcpServers();
+    const cfg = { id: randomUUID().slice(0, 8), name: String(body.name).trim().slice(0, 30), command: String(body.command).trim().slice(0, 300), enabled: true };
+    servers.push(cfg);
+    await saveMcpServers(servers);
+    return send(res, 200, cfg);
+  }
+  if (parts[1] === 'mcp' && parts[2]) {
+    const servers = await getMcpServers();
+    const cfg = servers.find((x) => x.id === parts[2]);
+    if (!cfg) return send(res, 404, { error: 'not found' });
+    if (req.method === 'DELETE') {
+      mcpClients.get(cfg.id)?.stop();
+      await saveMcpServers(servers.filter((x) => x.id !== cfg.id));
+      return send(res, 200, { ok: true });
+    }
+    if (req.method === 'PUT') {
+      const body = await readBody(req);
+      if (typeof body.enabled === 'boolean') { cfg.enabled = body.enabled; if (!body.enabled) mcpClients.get(cfg.id)?.stop(); }
+      await saveMcpServers(servers);
+      return send(res, 200, cfg);
+    }
+    if (req.method === 'POST' && parts[3] === 'test') {
+      const body = await readBody(req);
+      try {
+        const c = await getMcpClient(cfg);
+        const tool = body.tool || c.tools[0]?.name;
+        if (!tool) return send(res, 400, { error: '该服务没有可用工具' });
+        const result = await c.callTool(tool, body.args || {});
+        return send(res, 200, { tool, result: result.slice(0, 2000) });
+      } catch (e) { return send(res, 502, { error: e.message }); }
     }
   }
 
@@ -685,6 +829,7 @@ async function handleApi(req, res, url) {
       let system = buildSystemPrompt(card, config, memory);
       if (mode === 'agent') system += '\n\n你现在处于 Agent 模式，可以调用工具（抓网页、读写工作区文件、remember 记忆）完成任务。需要时果断使用工具，多步任务可以连续调用；用户透露值得长期记住的信息时用 remember 记下；完成后用中文简洁汇报结果。';
       // 短期记忆：有前情提要时注入，并缩小携带的原文窗口
+      const mcpDefs = mode === 'agent' ? await collectMcpTools() : [];
       const useShortTerm = memory.shortTerm && s.summary;
       if (useShortTerm) system += '\n\n本话前情提要（此前对话的压缩摘要，自然衔接，不要复述）：\n' + s.summary;
       const windowSize = useShortTerm ? RECENT_WINDOW : 60;
@@ -693,6 +838,7 @@ async function handleApi(req, res, url) {
           system,
           history: s.messages.slice(-windowSize).map((m) => ({ role: m.role, content: m.text })),
           mode,
+          mcpDefs,
         });
         const record = { role: 'assistant', text: reply, at: new Date().toISOString() };
         if (thinking) record.thinking = thinking;

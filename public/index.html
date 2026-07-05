@@ -336,6 +336,10 @@
         <span class="sk-name">工作空间</span>
         <span class="sk-desc">她干活的产出文件</span>
       </button>
+      <button class="skill" type="button" id="mcpEntryBtn">
+        <span class="sk-name">扩展 · MCP</span>
+        <span class="sk-desc">接入外部工具服务</span>
+      </button>
     </div>
     <div id="sessionList" class="session-scroll"></div>
     <button class="user-bar" type="button" id="userBar" aria-label="打开个人设置">
@@ -381,6 +385,8 @@
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5" r="2.6"/><path d="M2.8 13.5c1-3 3-4 5.2-4s4.2 1 5.2 4"/></svg><span>我</span></button>
         <button data-tab="memory" type="button">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.2h8v11.6l-4-2.6-4 2.6z"/></svg><span>记忆</span></button>
+        <button data-tab="mcp" type="button">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><path d="M5.8 7.2l4.4-2.4M5.8 8.8l4.4 2.4"/></svg><span>扩展</span></button>
         <button data-tab="workspace" type="button">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 4.5h4l1.4 1.8h7v6.8h-12.4z"/><path d="M1.8 4.5v-1.7h4.6"/></svg><span>工作空间</span></button>
         <button data-tab="security" type="button">
@@ -448,6 +454,16 @@
           </div>
         </section>
 
+        <section data-panel="mcp" hidden>
+          <p class="sub">MCP（Model Context Protocol）扩展：接入本地 MCP 服务器，她在「交给我吧」模式下就能使用这些外部工具。<strong>注意：MCP 服务是在你电脑上运行的程序，只添加你信任的命令。</strong>例如文件系统服务：<code style="background:var(--vermilion-wash);padding:1px 6px">npx -y @modelcontextprotocol/server-filesystem 你的目录路径</code></p>
+          <div class="set-fields">
+            <div id="mcpList"><p class="ws-empty">加载中…</p></div>
+            <div><label for="mcpNameInput">服务名称</label><input id="mcpNameInput" placeholder="例如：文件系统"></div>
+            <div><label for="mcpCmdInput">启动命令</label><input id="mcpCmdInput" placeholder="例如：npx -y @modelcontextprotocol/server-filesystem /Users/me/Desktop"></div>
+            <div class="row-btns"><span class="form-msg" id="mcpMsg"></span><button class="btn" type="button" id="addMcpBtn">添加服务</button></div>
+          </div>
+        </section>
+
         <section data-panel="workspace" hidden>
           <p class="sub">Agent 模式干活的产出都在这里（本机 data/workspace/）。点文件名查看内容。</p>
           <div id="wsList"></div>
@@ -466,11 +482,11 @@
 
         <section data-panel="about" hidden>
           <div class="about-block">
-            <p class="about-title">2CY AGENT <span>v0.6</span></p>
+            <p class="about-title">2CY AGENT <span>v0.7</span></p>
             <p class="sub">开源、本地优先的二次元 Agent——上传一张图，让你喜欢的角色住进电脑。界面是一张日漫黑白线稿风的「作者原稿桌」。</p>
             <ul class="rail-list">
-              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 记忆与画像（自动/手动沉淀） · 短期记忆前情提要 · 技能面板 · 联网搜索（原生 + Tavily 补齐全提供商） · 会话搜索与时间分组</li>
-              <li><span class="k">开发中</span>转线稿 · MCP · 手机端</li>
+              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 记忆与画像（自动/手动沉淀） · 短期记忆前情提要 · 技能面板 · 联网搜索（原生 + Tavily） · MCP 扩展 · 会话搜索与时间分组</li>
+              <li><span class="k">开发中</span>转线稿 · 手机端 · 自定义 Skill</li>
               <li><span class="k">许可</span>MIT · 角色版权归原权利人，上传内容用户自负</li>
             </ul>
           </div>
@@ -550,6 +566,7 @@ function switchTab(tab) {
   document.querySelectorAll('.set-panels section').forEach((s) => { s.hidden = s.dataset.panel !== tab; });
   if (tab === 'workspace') loadWorkspace();
   if (tab === 'memory') loadMemoryPanel();
+  if (tab === 'mcp') loadMcpPanel();
 }
 document.querySelectorAll('#setNav button').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
 
@@ -687,7 +704,7 @@ function renderRail() {
         <ul class="rail-list">
           <li><span class="k">转线稿</span>本地模型 · 开发中</li>
           <li><span class="k">联网搜集</span>人设自动抓取 · 开发中</li>
-          <li><span class="k">扩展</span>MCP · 开发中</li>
+          <li><span class="k">扩展</span>MCP · 已上线（设置 → 扩展）</li>
         </ul>
       </section>`;
     $('portraitBox').addEventListener('click', () => $('avatarFile').click());
@@ -1007,6 +1024,38 @@ $('addFactBtn').addEventListener('click', async () => {
 // ---------- 侧栏：搜索、工作空间入口、底部用户区 ----------
 $('sessionSearch').addEventListener('input', () => { sessionQuery = $('sessionSearch').value; renderSessionList(); });
 $('wsEntryBtn').addEventListener('click', () => { $('settingsBtn').click(); switchTab('workspace'); $('mokuji').classList.remove('is-open'); });
+$('mcpEntryBtn').addEventListener('click', () => { $('settingsBtn').click(); switchTab('mcp'); $('mokuji').classList.remove('is-open'); });
+
+// ---------- MCP 管理（v0.7） ----------
+async function loadMcpPanel() {
+  const list = $('mcpList');
+  list.innerHTML = '<p class="ws-empty">连接中…（首次连接会启动服务进程，可能需要几秒）</p>';
+  const servers = await api('/api/mcp').catch(() => []);
+  if (!servers.length) { list.innerHTML = '<p class="ws-empty">还没有接入 MCP 服务。在下面填名称和启动命令添加。</p>'; return; }
+  list.innerHTML = servers.map((m) => `
+    <div class="ws-row" style="align-items:flex-start">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:900;font-size:.9rem">${esc(m.name)} <span style="font-weight:400;color:${m.status === 'ok' ? 'var(--ink-faint)' : 'var(--vermilion)'};font-size:.78rem">${m.status === 'ok' ? '已连接 · ' + m.tools.length + ' 个工具（' + esc(m.tools.slice(0, 5).join('、')) + (m.tools.length > 5 ? '…' : '') + '）' : esc(m.status)}</span></div>
+        <div style="font-size:.78rem;color:var(--ink-faint);word-break:break-all">${esc(m.command)}</div>
+      </div>
+      <button class="btn-link" data-delmcp="${m.id}">删除</button>
+    </div>`).join('');
+  list.querySelectorAll('[data-delmcp]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('删除这个 MCP 服务？')) return;
+    await api('/api/mcp/' + b.dataset.delmcp, { method: 'DELETE' });
+    loadMcpPanel();
+  }));
+}
+$('addMcpBtn').addEventListener('click', async () => {
+  const name = $('mcpNameInput').value.trim(), command = $('mcpCmdInput').value.trim();
+  if (!name || !command) { $('mcpMsg').textContent = '名称和命令都要填。'; return; }
+  try {
+    await api('/api/mcp', { method: 'POST', body: JSON.stringify({ name, command }) });
+    $('mcpNameInput').value = ''; $('mcpCmdInput').value = '';
+    $('mcpMsg').textContent = '已添加，正在连接…';
+    loadMcpPanel();
+  } catch (e) { $('mcpMsg').textContent = e.message; }
+});
 $('userBar').addEventListener('click', () => { $('settingsBtn').click(); switchTab('me'); $('mokuji').classList.remove('is-open'); });
 
 // ---------- 技能（v0.2）：预设任务模板，点选后进入 Agent 模式 ----------
