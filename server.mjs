@@ -13,7 +13,8 @@ const PUBLIC = join(ROOT, 'public');
 const DATA = join(ROOT, 'data');
 const SESSIONS = join(DATA, 'sessions');
 const PORT = Number(process.env.PORT || 2333);
-const HOST = '127.0.0.1'; // 只监听本机；手机端接入走后续的配对中转
+const LAN_MODE = process.argv.includes('--lan');
+const HOST = LAN_MODE ? '0.0.0.0' : '127.0.0.1'; // 默认只监听本机；--lan 开启局域网接入（配对码鉴权）
 const DEFAULT_MODEL = 'claude-opus-4-8';
 
 const MIME = {
@@ -56,6 +57,35 @@ const configFile = join(DATA, 'config.json');
 const characterFile = join(DATA, 'character.json');
 const avatarFile = join(DATA, 'avatar');
 const memoryFile = join(DATA, 'memory.json');
+
+// ---------- 自定义 Skill（v0.8） ----------
+const skillsFile = join(DATA, 'skills.json');
+async function getCustomSkills() { return (await readJSON(skillsFile, [])) || []; }
+
+// ---------- 局域网配对码（v0.8） ----------
+async function getLanCode() {
+  const config = await getConfig();
+  if (!config.lanCode) {
+    config.lanCode = String(Math.floor(100000 + Math.random() * 900000));
+    await writeJSON(configFile, config);
+  }
+  return config.lanCode;
+}
+function isLocalReq(req) {
+  const a = req.socket.remoteAddress || '';
+  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+}
+function hasLanAuth(req, code) {
+  const cookies = String(req.headers.cookie || '');
+  return cookies.includes('cy_code=' + code);
+}
+const LAN_GATE_HTML = (wrong) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2CY Agent · 配对</title><body style="font-family:system-ui;background:#faf7f0;color:#1a1a1a;display:grid;place-items:center;min-height:90vh">
+<form method="GET" action="/" style="text-align:center;border:2px solid #1a1a1a;padding:32px 28px;background:#fff">
+<h2 style="margin:0 0 6px">2CY Agent</h2><p style="margin:0 0 18px;font-size:.9rem;color:#666">输入电脑终端里显示的 6 位配对码</p>
+${wrong ? '<p style="color:#b3402a;font-size:.85rem">配对码不对，再看看终端。</p>' : ''}
+<input name="code" inputmode="numeric" maxlength="6" autofocus style="font-size:1.4rem;letter-spacing:.4em;text-align:center;width:9em;padding:8px;border:2px solid #1a1a1a">
+<br><button style="margin-top:16px;font-size:1rem;padding:8px 28px;border:2px solid #1a1a1a;background:#1a1a1a;color:#fff">进入</button></form></body>`;
 
 // ---------- 记忆（v0.2）：画像 + 事实清单，全部本机、可见可删 ----------
 async function getMemory() {
@@ -594,6 +624,25 @@ async function handleApi(req, res, url) {
     }
   }
 
+  // ---------- 自定义 Skill（v0.8） ----------
+  if (req.method === 'GET' && url.pathname === '/api/skills') {
+    return send(res, 200, await getCustomSkills());
+  }
+  if (req.method === 'POST' && url.pathname === '/api/skills') {
+    const body = await readBody(req);
+    if (!body.name || !body.tpl) return send(res, 400, { error: '需要名称和任务模板' });
+    const list = await getCustomSkills();
+    const skill = { id: randomUUID().slice(0, 8), name: String(body.name).trim().slice(0, 20), desc: String(body.desc || '').trim().slice(0, 40), tpl: String(body.tpl).trim().slice(0, 500) };
+    list.push(skill);
+    await writeJSON(skillsFile, list);
+    return send(res, 200, skill);
+  }
+  if (req.method === 'DELETE' && parts[1] === 'skills' && parts[2]) {
+    const list = await getCustomSkills();
+    await writeJSON(skillsFile, list.filter((x) => x.id !== parts[2]));
+    return send(res, 200, { ok: true });
+  }
+
   // ---------- MCP（v0.7） ----------
   if (req.method === 'GET' && url.pathname === '/api/mcp') {
     const servers = await getMcpServers();
@@ -882,6 +931,21 @@ async function handleStatic(req, res, url) {
 // ---------- 启动 ----------
 await mkdir(SESSIONS, { recursive: true });
 createServer(async (req, res) => {
+  // 局域网模式：非本机请求需配对码（一次输入，cookie 保持）
+  if (LAN_MODE && !isLocalReq(req)) {
+    const code = await getLanCode();
+    if (!hasLanAuth(req, code)) {
+      const u = new URL(req.url, 'http://x');
+      const given = u.searchParams.get('code');
+      if (given === code) {
+        res.writeHead(302, { 'set-cookie': `cy_code=${code}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax`, location: '/' });
+        return res.end();
+      }
+      if (u.pathname.startsWith('/api/')) { res.writeHead(401, { 'content-type': 'application/json' }); return res.end('{"error":"需要配对码"}'); }
+      res.writeHead(given ? 401 : 200, { 'content-type': 'text/html; charset=utf-8' });
+      return res.end(LAN_GATE_HTML(!!given));
+    }
+  }
   const url = new URL(req.url, `http://${HOST}:${PORT}`);
   try {
     if (url.pathname.startsWith('/api/')) return await handleApi(req, res, url);
@@ -889,9 +953,17 @@ createServer(async (req, res) => {
   } catch (e) {
     return send(res, 500, { error: e.message || 'internal error' });
   }
-}).listen(PORT, HOST, () => {
-  const url = `http://${HOST}:${PORT}`;
+}).listen(PORT, HOST, async () => {
+  const url = `http://${LAN_MODE ? '127.0.0.1' : HOST}:${PORT}`;
   console.log(`2CY Agent 已启动 → ${url}`);
+  if (LAN_MODE) {
+    const { networkInterfaces } = await import('node:os');
+    const nets = networkInterfaces();
+    const ips = Object.values(nets).flat().filter((n) => n && n.family === 'IPv4' && !n.internal).map((n) => n.address);
+    const code = await getLanCode();
+    console.log('局域网模式已开启：手机连同一 Wi-Fi，浏览器访问 ' + (ips.length ? ips.map((ip) => `http://${ip}:${PORT}`).join(' 或 ') : '（未找到内网地址）'));
+    console.log('配对码：' + code + '（首次访问输入一次即可）');
+  }
   console.log('数据目录：' + DATA + '（对话、角色卡、API key 均只存本机）');
   // 自动打开浏览器（设 NO_OPEN=1 可关闭）
   if (!process.env.NO_OPEN) {
