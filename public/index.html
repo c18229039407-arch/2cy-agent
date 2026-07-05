@@ -349,9 +349,9 @@
     <div class="chat" id="chat" role="log" aria-live="polite"><div class="chat-inner" id="chatInner"></div></div>
     <div class="composer">
       <div class="mode-switch" id="modeSwitch" role="radiogroup" aria-label="对话模式">
-        <label class="mode-opt"><input type="radio" name="mode" value="chat" checked><span>聊天 · 轻快直接</span></label>
-        <label class="mode-opt"><input type="radio" name="mode" value="expert"><span>专家 · 深思熟虑</span></label>
-        <label class="mode-opt"><input type="radio" name="mode" value="agent"><span>Agent · 动手干活</span></label>
+        <label class="mode-opt"><input type="radio" name="mode" value="chat" checked><span>随便聊聊</span></label>
+        <label class="mode-opt"><input type="radio" name="mode" value="expert"><span>让我想想</span></label>
+        <label class="mode-opt"><input type="radio" name="mode" value="agent"><span>交给我吧</span></label>
       </div>
       <form class="composer-row" id="composerForm">
         <textarea id="composerInput" rows="2" placeholder="写下这一格的台词……" aria-label="消息输入"></textarea>
@@ -872,8 +872,8 @@ function renderMessagesFromCache(extra) {
 // ---------- 模式切换 ----------
 const MODE_HINTS = {
   chat: 'Enter 发送 · Shift + Enter 换行',
-  expert: '专家模式：她会先仔细思考再回答，思维过程可展开查看',
-  agent: 'Agent 模式：她可以抓网页、读写工作区文件、把重要信息记入长期记忆来完成任务',
+  expert: '让我想想：我会先仔细琢磨再回答，思考过程你可以展开看',
+  agent: '交给我吧：查资料、写文件、整理东西、记住关于你的事，我都可以',
 };
 const BUSY_HINTS = { chat: '作画中……', expert: '深思中……', agent: '干活中……' };
 function currentMode() { return document.querySelector('#modeSwitch input:checked')?.value || 'chat'; }
