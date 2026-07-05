@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2CY Agent — 开源、本地优先的二次元 Agent</title>
+<meta name="description" content="上传一张图，让你喜欢的角色住进电脑。BYOK、本地优先、四层记忆、技能面板、原生联网搜索。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&family=Noto+Sans+SC:wght@400;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: oklch(100% 0 0);
+    --ink: oklch(22% 0.01 280);
+    --ink-soft: oklch(42% 0 0);
+    --ink-faint: oklch(50% 0 0);
+    --pencil: oklch(70% 0 0);
+    --manuscript-blue: oklch(87% 0.05 230);
+    --vermilion: oklch(52% 0.185 30);
+    --vermilion-wash: oklch(52% 0.185 30 / 0.06);
+    --soul-cyan: oklch(70% 0.12 210);
+    --soul-cyan-deep: oklch(45% 0.09 215);
+    --font-logo: 'Dela Gothic One', 'Noto Sans SC', sans-serif;
+    --font-hand: 'Ma Shan Zheng', 'Noto Sans SC', serif;
+    --font-brush: 'Zhi Mang Xing', 'Ma Shan Zheng', serif;
+    --font-body: 'Noto Sans SC', system-ui, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+  body {
+    font-family: var(--font-body); font-size: 15px; line-height: 1.75;
+    color: var(--ink); background: var(--paper);
+    /* 方眼稿纸 */
+    background-image:
+      linear-gradient(var(--manuscript-blue) 1px, transparent 1px),
+      linear-gradient(90deg, var(--manuscript-blue) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-attachment: fixed;
+  }
+  .rough { filter: url(#rough-lg); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+
+  /* 顶栏 */
+  header { padding: 18px 0; }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: var(--font-logo); font-size: 1rem; letter-spacing: .02em; }
+  .gh-link { font-size: .85rem; color: var(--ink); text-decoration: none; border: 1.5px solid var(--ink); padding: 7px 14px; background: var(--paper); }
+  .gh-link:hover { background: var(--vermilion-wash); }
+
+  /* 英雄格：一整块漫画大分镜 */
+  .hero { margin: 26px auto 60px; }
+  .hero-panel {
+    position: relative; border: 2.5px solid var(--ink); background: var(--paper);
+    padding: clamp(36px, 7vw, 84px) clamp(22px, 6vw, 72px);
+  }
+  .hero-eyebrow { font-family: var(--font-hand); font-size: 1.05rem; letter-spacing: .2em; color: var(--ink-soft); }
+  h1 {
+    font-family: var(--font-logo); font-weight: 400;
+    font-size: clamp(2.5rem, 8vw, 5.25rem); line-height: 1.04; letter-spacing: -0.01em;
+    margin: 10px 0 18px;
+  }
+  h1 .cyan { color: var(--soul-cyan-deep); }
+  .hero-tagline { font-family: var(--font-brush); font-size: clamp(1.5rem, 3.4vw, 2.1rem); letter-spacing: .05em; margin-bottom: 14px; }
+  .hero-sub { max-width: 560px; color: var(--ink-soft); margin-bottom: 34px; }
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn {
+    font-family: var(--font-body); font-weight: 900; font-size: .95rem; text-decoration: none;
+    padding: 13px 26px; border: 2px solid var(--ink); color: var(--ink); background: var(--paper);
+    display: inline-block;
+  }
+  .btn.primary { background: var(--ink); color: var(--paper); }
+  .btn.primary:hover { background: var(--vermilion); border-color: var(--vermilion); }
+  .btn:hover { background: var(--vermilion-wash); }
+  .hero-note { margin-top: 14px; font-size: .8rem; color: var(--ink-faint); }
+  /* 朱红印章 */
+  .seal {
+    position: absolute; right: clamp(14px, 4vw, 44px); top: clamp(14px, 4vw, 40px);
+    font-family: var(--font-hand); color: var(--vermilion); border: 2.5px solid var(--vermilion);
+    border-radius: 6px; padding: 8px 10px; font-size: 1rem; line-height: 1.35;
+    writing-mode: vertical-rl; letter-spacing: .18em; transform: rotate(4deg);
+    background: var(--paper); opacity: .92;
+  }
+  /* 她的台词气泡 */
+  .bubble {
+    position: relative; display: inline-block; margin-top: 30px;
+    border: 2px solid var(--ink); border-radius: 255px 18px 230px 16px / 18px 240px 16px 255px;
+    padding: 12px 22px; font-family: var(--font-hand); font-size: 1.15rem; background: var(--paper);
+  }
+  .bubble::after {
+    content: ''; position: absolute; left: 34px; bottom: -12px; width: 14px; height: 14px;
+    border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink);
+    background: var(--paper); transform: skewX(38deg) rotate(45deg);
+  }
+  .bubble .who { display: block; font-family: var(--font-body); font-size: .72rem; color: var(--soul-cyan-deep); font-weight: 900; letter-spacing: .1em; }
+
+  /* 章节标题 */
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin: 0 0 26px; }
+  .sec-head h2 { font-family: var(--font-hand); font-weight: 400; font-size: clamp(1.5rem, 3vw, 1.9rem); letter-spacing: .06em; }
+  .sec-head .en { font-size: .72rem; letter-spacing: .22em; color: var(--ink-faint); font-weight: 900; }
+
+  /* 分镜网格：功能即分格 */
+  section { margin-bottom: 76px; }
+  .koma-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 2.5px solid var(--ink); background: var(--paper); }
+  .koma { border: 1.25px solid var(--ink); padding: 26px 22px 24px; position: relative; min-height: 180px; }
+  .koma .tag { font-family: var(--font-hand); font-size: .95rem; color: var(--ink-faint); letter-spacing: .14em; }
+  .koma h3 { font-family: var(--font-body); font-weight: 900; font-size: 1.05rem; margin: 6px 0 8px; }
+  .koma p { font-size: .875rem; color: var(--ink-soft); }
+  .koma.accent h3 { color: var(--vermilion); }
+  .koma .modes { font-family: var(--font-hand); font-size: 1.05rem; letter-spacing: .05em; color: var(--ink); }
+  @media (max-width: 760px) { .koma-grid { grid-template-columns: 1fr; } .koma { min-height: 0; } }
+
+  /* 快速开始：真实的三步 */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .step { border: 2px solid var(--ink); background: var(--paper); padding: 24px 20px; position: relative; }
+  .step .no { font-family: var(--font-hand); font-size: 1.6rem; color: var(--vermilion); }
+  .step h3 { font-size: 1rem; margin: 4px 0 8px; }
+  .step p, .step code { font-size: .85rem; color: var(--ink-soft); }
+  .step code { display: block; margin-top: 8px; background: var(--vermilion-wash); padding: 8px 10px; font-family: ui-monospace, monospace; color: var(--ink); word-break: break-all; }
+  @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+
+  /* 提供商 */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { border: 1.5px solid var(--pencil); padding: 6px 14px; font-size: .85rem; color: var(--ink-soft); background: var(--paper); }
+
+  /* 隐私横幅 */
+  .privacy { border: 2.5px solid var(--ink); background: var(--paper); padding: 30px clamp(20px, 4vw, 40px); position: relative; }
+  .privacy h2 { font-family: var(--font-hand); font-weight: 400; font-size: 1.5rem; margin-bottom: 10px; }
+  .privacy p { color: var(--ink-soft); max-width: 640px; }
+  .privacy .k { color: var(--vermilion); font-weight: 900; }
+
+  footer { padding: 34px 0 46px; font-size: .82rem; color: var(--ink-faint); }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; }
+  footer a { color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="rough-lg" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.6"/></filter>
+</defs></svg>
+
+<header>
+  <div class="wrap">
+    <span class="logo">2CY AGENT</span>
+    <a class="gh-link rough" href="https://github.com/c18229039407-arch/2cy-agent">GitHub ↗</a>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div class="hero-panel rough">
+      <span class="seal">本地优先<br>数据不出机</span>
+      <p class="hero-eyebrow">开源 · 本地优先 · BYOK</p>
+      <h1>让她住进<br>你的<span class="cyan">电脑</span>。</h1>
+      <p class="hero-tagline">上传一张图，你喜欢的角色就此登场。</p>
+      <p class="hero-sub">2CY Agent 是一张「作者的原稿桌」：角色带着人设陪你闲聊，也认真替你干活——查资料、写代码、做幻灯片、整理文档，并且记得住你是谁。全部数据只存你自己的电脑。</p>
+      <div class="cta-row">
+        <a class="btn primary rough" href="https://github.com/c18229039407-arch/2cy-agent/releases/latest">下载最新版</a>
+        <a class="btn rough" href="https://github.com/c18229039407-arch/2cy-agent">查看源码</a>
+      </div>
+      <p class="hero-note">Windows / macOS / Linux · 仅需 Node.js 18+ · 零依赖，解压双击即用</p>
+      <span class="bubble rough"><span class="who">她说</span>交给我吧。</span>
+    </div>
+  </div>
+
+  <section class="wrap" id="features">
+    <div class="sec-head"><h2>这一话的看点</h2><span class="en">FEATURES</span></div>
+    <div class="koma-grid rough">
+      <div class="koma"><span class="tag">第一格</span><h3>BYOK，你的钥匙你做主</h3><p>Claude、GPT、DeepSeek、Kimi、GLM、通义、豆包、OpenRouter、Ollama…… 填入你自己的 API key 即可对话，key 只存本机。</p></div>
+      <div class="koma"><span class="tag">第二格</span><h3>角色卡</h3><p>上传角色图、填个名字，可以让模型代笔起草性格、口癖、说话方式与羁绊设定——她从此有了人格。</p></div>
+      <div class="koma"><span class="tag">第三格</span><h3>三种相处方式</h3><p class="modes">随便聊聊 · 让我想想 · 交给我吧</p><p>闲聊有角色感，深思有过程可看，干活时她会真的动手。</p></div>
+      <div class="koma accent"><span class="tag">第四格</span><h3>四层记忆</h3><p>会话记录、长对话自动压缩的前情提要、用户画像与事实清单、跨会话沉淀——她记得你，且每一条都可见、可改、可删。</p></div>
+      <div class="koma"><span class="tag">第五格</span><h3>技能面板</h3><p>生成代码、做浏览器里可放映的幻灯片、整理文档、查资料——点选即进入 Agent 模式，产出保存在工作区。</p></div>
+      <div class="koma"><span class="tag">第六格</span><h3>原生联网搜索</h3><p>一键开启 Anthropic / Kimi / 智谱 GLM 的官方搜索工具，搜索由提供商侧执行，不经任何第三方服务。</p></div>
+    </div>
+  </section>
+
+  <section class="wrap" id="start">
+    <div class="sec-head"><h2>三步开场</h2><span class="en">QUICK START</span></div>
+    <div class="steps">
+      <div class="step rough"><span class="no">壱</span><h3>下载解压</h3><p>点上方「下载最新版」获取压缩包并解压；先安装 <a href="https://nodejs.org/">Node.js</a> 18+（零依赖，无需 npm install）。</p></div>
+      <div class="step rough"><span class="no">弐</span><h3>双击启动</h3><p>Windows 双击 <code style="display:inline;padding:1px 6px">启动-Windows.bat</code>，macOS 双击 <code style="display:inline;padding:1px 6px">启动-Mac.command</code>，浏览器自动打开。</p></div>
+      <div class="step rough"><span class="no">参</span><h3>填 key，开聊</h3><p>在「设置」里选择提供商、填入你自己的 API key，上传一张她的图——这一话开始了。</p></div>
+    </div>
+  </section>
+
+  <section class="wrap" id="providers">
+    <div class="sec-head"><h2>支持的提供商</h2><span class="en">PROVIDERS</span></div>
+    <div class="chips">
+      <span class="chip">Anthropic（Claude）</span><span class="chip">OpenAI（GPT）</span><span class="chip">DeepSeek</span><span class="chip">Kimi</span><span class="chip">智谱 GLM</span><span class="chip">通义千问</span><span class="chip">豆包</span><span class="chip">OpenRouter</span><span class="chip">Ollama（本地免 key）</span><span class="chip">自定义（OpenAI 兼容）</span>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="privacy rough">
+      <h2>隐私是默认值，不是选项。</h2>
+      <p>对话、角色卡、记忆、API key 全部存在<span class="k">你自己电脑</span>的 data/ 目录；服务只监听 127.0.0.1；对话请求从你的电脑<span class="k">直连</span>模型提供商——没有任何中间服务器，没有账号，没有遥测。她对你的每一条记忆，你随时可见、可改、可删。</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>2CY Agent · MIT License</span>
+    <a href="https://github.com/c18229039407-arch/2cy-agent">GitHub</a>
+    <a href="https://github.com/c18229039407-arch/2cy-agent/releases">全部版本</a>
+    <span>角色版权归原权利人所有；用户对上传内容自行负责。</span>
+  </div>
+</footer>
+</body>
+</html>
