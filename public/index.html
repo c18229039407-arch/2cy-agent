@@ -81,6 +81,21 @@
   .session[aria-current="true"] .name::after { content: ''; position: absolute; left: -2px; right: -4px; bottom: -3px; border-bottom: 2px solid var(--vermilion); filter: url(#rough-sm); }
   .session-del { background: none; border: none; color: var(--pencil); cursor: pointer; font-size: .875rem; padding: 6px; visibility: hidden; }
   .session-row:hover .session-del, .session-del:focus-visible { visibility: visible; color: var(--ink-soft); }
+  .session-scroll { flex: 1 1 auto; min-height: 80px; overflow-y: auto; }
+  .side-sec { flex: 0 0 auto; margin-top: 12px; padding-top: 10px; position: relative; }
+  .side-sec::before { content: ''; position: absolute; top: 0; left: 4px; right: 4px; border-top: 1.5px dashed var(--pencil); filter: url(#rough-sm); }
+  .side-body { font-size: .8rem; color: var(--ink-soft); line-height: 1.6; padding: 0 8px 8px; }
+  .side-body .dim { color: var(--ink-faint); }
+  .side-btns { display: flex; align-items: center; gap: 10px; padding: 0 8px 2px; }
+  .mem-toggle { font-size: .78rem; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .mem-toggle input { accent-color: var(--vermilion); }
+  .skill { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: 8px; font-family: var(--font-body); }
+  .skill:hover { background: var(--hover-wash); }
+  .skill:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+  .skill .sk-name { font-size: .875rem; color: var(--ink); display: block; }
+  .skill .sk-desc { font-size: .74rem; color: var(--ink-faint); display: block; margin-top: 1px; }
+  .fact-text { flex: 1; min-width: 0; font-size: .85rem; color: var(--ink-soft); padding: 6px 0; }
+  .set-fields textarea { width: 100%; resize: vertical; font-family: var(--font-body); font-size: .875rem; color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); padding: 9px 10px; }
   .session-del:hover { color: var(--ink); }
   .mokuji-empty { font-size: .78rem; color: var(--ink-faint); padding: 8px; line-height: 1.8; }
 
@@ -299,12 +314,27 @@
     </div>
   </header>
 
-  <nav class="mokuji" id="mokuji" aria-label="会话列表">
+  <nav class="mokuji" id="mokuji" aria-label="会话与能力">
     <div class="mokuji-head">
       <h2>回目</h2>
       <button class="btn" type="button" id="newSessionBtn">＋ 新的一话</button>
     </div>
-    <div id="sessionList"></div>
+    <div id="sessionList" class="session-scroll"></div>
+    <div class="side-sec" aria-label="记忆">
+      <div class="mokuji-head">
+        <h2>记忆</h2>
+        <label class="mem-toggle"><input type="checkbox" id="memToggle">开启</label>
+      </div>
+      <div id="memSummary" class="side-body"></div>
+      <div class="side-btns">
+        <button class="btn" type="button" id="distillBtn">沉淀本话</button>
+        <button class="btn-link" type="button" id="memManageBtn">管理</button>
+      </div>
+    </div>
+    <div class="side-sec" aria-label="技能">
+      <div class="mokuji-head"><h2>技能</h2></div>
+      <div id="skillList"></div>
+    </div>
   </nav>
 
   <main class="genko">
@@ -341,6 +371,8 @@
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8h3l2-4 3 8 2-4h3"/></svg><span>供应商</span></button>
         <button data-tab="me" type="button">
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5" r="2.6"/><path d="M2.8 13.5c1-3 3-4 5.2-4s4.2 1 5.2 4"/></svg><span>我</span></button>
+        <button data-tab="memory" type="button">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.2h8v11.6l-4-2.6-4 2.6z"/></svg><span>记忆</span></button>
         <button data-tab="workspace" type="button">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 4.5h4l1.4 1.8h7v6.8h-12.4z"/><path d="M1.8 4.5v-1.7h4.6"/></svg><span>工作空间</span></button>
         <button data-tab="security" type="button">
@@ -383,13 +415,26 @@
           </div>
         </section>
 
+        <section data-panel="memory" hidden>
+          <p class="sub">她对你的长期记忆：一段画像 + 一份事实清单，全部存在本机 data/memory.json——你随时可见、可改、可删。左栏「沉淀本话」会用你的 API 额度做一次总结提炼。</p>
+          <div class="set-fields">
+            <div><label for="memProfileInput">用户画像</label><textarea id="memProfileInput" rows="3" placeholder="她眼中的你。可以手写，也可以由「沉淀」自动生成。"></textarea></div>
+            <div class="row-btns"><span class="form-msg" id="memMsg"></span><button class="btn" type="button" id="saveMemProfileBtn">保存画像</button></div>
+            <div><label>事实清单</label><div id="memFactList"></div></div>
+            <div class="row-btns" style="justify-content:flex-start">
+              <input id="newFactInput" placeholder="手动添加一条事实，如：每周三晚上有羽毛球" style="flex:1">
+              <button class="btn" type="button" id="addFactBtn">添加</button>
+            </div>
+          </div>
+        </section>
+
         <section data-panel="workspace" hidden>
           <p class="sub">Agent 模式干活的产出都在这里（本机 data/workspace/）。点文件名查看内容。</p>
           <div id="wsList"></div>
         </section>
 
         <section data-panel="security" hidden>
-          <p class="sub">所有数据都在你电脑的 data/ 目录：对话（sessions/）、角色卡与形象（character.json、avatar）、配置与 key（config.json，权限 600）。服务只监听 127.0.0.1，对话请求直连模型提供商，没有任何中间服务器。</p>
+          <p class="sub">所有数据都在你电脑的 data/ 目录：对话（sessions/）、角色卡与形象（character.json、avatar）、长期记忆（memory.json）、配置与 key（config.json，权限 600）。服务只监听 127.0.0.1，对话请求直连模型提供商，没有任何中间服务器。</p>
           <div class="set-fields">
             <div class="row-btns" style="justify-content:flex-start">
               <button class="btn" type="button" id="clearKeyBtn">抹掉 API key</button>
@@ -401,11 +446,11 @@
 
         <section data-panel="about" hidden>
           <div class="about-block">
-            <p class="about-title">2CY AGENT <span>v0.1</span></p>
+            <p class="about-title">2CY AGENT <span>v0.2</span></p>
             <p class="sub">开源、本地优先的二次元 Agent——上传一张图，让你喜欢的角色住进电脑。界面是一张日漫黑白线稿风的「作者原稿桌」。</p>
             <ul class="rail-list">
-              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具</li>
-              <li><span class="k">开发中</span>转线稿 · 联网搜集人设 · MCP/Skill · 手机端</li>
+              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 长期记忆与画像 · 技能面板</li>
+              <li><span class="k">开发中</span>转线稿 · 联网搜索 · MCP · 手机端</li>
               <li><span class="k">许可</span>MIT · 角色版权归原权利人，上传内容用户自负</li>
             </ul>
           </div>
@@ -482,6 +527,7 @@ function switchTab(tab) {
   document.querySelectorAll('#setNav button').forEach((b) => b.classList.toggle('is-active', b.dataset.tab === tab));
   document.querySelectorAll('.set-panels section').forEach((s) => { s.hidden = s.dataset.panel !== tab; });
   if (tab === 'workspace') loadWorkspace();
+  if (tab === 'memory') loadMemoryPanel();
 }
 document.querySelectorAll('#setNav button').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
 
@@ -615,7 +661,7 @@ function renderRail() {
         <ul class="rail-list">
           <li><span class="k">转线稿</span>本地模型 · 开发中</li>
           <li><span class="k">联网搜集</span>人设自动抓取 · 开发中</li>
-          <li><span class="k">扩展</span>MCP / Skill · 开发中</li>
+          <li><span class="k">扩展</span>MCP · 开发中</li>
         </ul>
       </section>`;
     $('portraitBox').addEventListener('click', () => $('avatarFile').click());
@@ -784,7 +830,7 @@ function renderMessagesFromCache(extra) {
 const MODE_HINTS = {
   chat: 'Enter 发送 · Shift + Enter 换行',
   expert: '专家模式：她会先仔细思考再回答，思维过程可展开查看',
-  agent: 'Agent 模式：她可以抓网页、读写工作区文件（data/workspace/）来完成任务',
+  agent: 'Agent 模式：她可以抓网页、读写工作区文件、把重要信息记入长期记忆来完成任务',
 };
 const BUSY_HINTS = { chat: '作画中……', expert: '深思中……', agent: '干活中……' };
 function currentMode() { return document.querySelector('#modeSwitch input:checked')?.value || 'chat'; }
@@ -823,6 +869,7 @@ $('composerForm').addEventListener('submit', async (e) => {
     sendBtn.disabled = input.value.trim() === '';
     renderMessagesFromCache();
     loadSessions();
+    loadMemory();
   }
 });
 
@@ -832,8 +879,108 @@ $('menuBtn').addEventListener('click', () => {
   $('menuBtn').setAttribute('aria-expanded', String(open));
 });
 
+// ---------- 记忆（v0.2） ----------
+let memory = { enabled: true, profile: '', facts: [] };
+async function loadMemory() {
+  memory = await api('/api/memory').catch(() => memory);
+  renderMemorySide();
+}
+function renderMemorySide() {
+  $('memToggle').checked = memory.enabled;
+  if (!memory.enabled) {
+    $('memSummary').innerHTML = '<div class="dim">记忆已关闭，她不会记住你说过的话。</div>';
+  } else {
+    const brief = memory.profile ? esc(memory.profile.slice(0, 56)) + (memory.profile.length > 56 ? '…' : '') : '';
+    $('memSummary').innerHTML =
+      (brief ? '<div>' + brief + '</div>' : '<div class="dim">还没有画像——聊几句后点「沉淀本话」。</div>') +
+      '<div class="dim">已记住 ' + memory.facts.length + ' 条事实</div>';
+  }
+  $('distillBtn').disabled = !memory.enabled || pending;
+}
+$('memToggle').addEventListener('change', async () => {
+  memory = await api('/api/memory', { method: 'PUT', body: JSON.stringify({ enabled: $('memToggle').checked }) }).catch(() => memory);
+  renderMemorySide();
+});
+$('distillBtn').addEventListener('click', async () => {
+  if (!activeId) return;
+  $('distillBtn').disabled = true;
+  $('distillBtn').textContent = '沉淀中…';
+  try {
+    const r = await api('/api/memory/distill', { method: 'POST', body: JSON.stringify({ sessionId: activeId }) });
+    await loadMemory();
+    $('memSummary').insertAdjacentHTML('beforeend', '<div class="dim">✓ 本次新增 ' + r.added.length + ' 条</div>');
+  } catch (e) {
+    $('memSummary').insertAdjacentHTML('beforeend', '<div class="dim">沉淀失败：' + esc(e.message) + '</div>');
+  } finally {
+    $('distillBtn').textContent = '沉淀本话';
+    $('distillBtn').disabled = !memory.enabled;
+  }
+});
+$('memManageBtn').addEventListener('click', () => {
+  $('settingsBtn').click();
+  switchTab('memory');
+});
+async function loadMemoryPanel() {
+  memory = await api('/api/memory').catch(() => memory);
+  $('memProfileInput').value = memory.profile || '';
+  const list = $('memFactList');
+  list.innerHTML = memory.facts.length
+    ? memory.facts.slice().reverse().map((f) => `
+      <div class="ws-row">
+        <span class="fact-text">${esc(f.text)}</span>
+        <button class="btn-link" data-delfact="${f.id}">删除</button>
+      </div>`).join('')
+    : '<p class="ws-empty">还没有记住任何事实。对话后点左栏「沉淀本话」，或在下面手动添加。</p>';
+  list.querySelectorAll('[data-delfact]').forEach((b) => b.addEventListener('click', async () => {
+    await api('/api/memory/facts/' + b.dataset.delfact, { method: 'DELETE' });
+    await loadMemoryPanel();
+    renderMemorySide();
+  }));
+}
+$('saveMemProfileBtn').addEventListener('click', async () => {
+  try {
+    memory = await api('/api/memory', { method: 'PUT', body: JSON.stringify({ profile: $('memProfileInput').value }) });
+    renderMemorySide();
+    $('memMsg').textContent = '已保存。';
+  } catch (e) { $('memMsg').textContent = e.message; }
+});
+$('addFactBtn').addEventListener('click', async () => {
+  const text = $('newFactInput').value.trim();
+  if (!text) return;
+  try {
+    await api('/api/memory/facts', { method: 'POST', body: JSON.stringify({ text }) });
+    $('newFactInput').value = '';
+    await loadMemoryPanel();
+    await loadMemory();
+  } catch (e) { $('memMsg').textContent = e.message; }
+});
+
+// ---------- 技能（v0.2）：预设任务模板，点选后进入 Agent 模式 ----------
+const SKILLS = [
+  { name: '生成代码', desc: '写好并保存进工作区', tpl: '帮我写一个____（描述需求），写好后把代码保存为工作区文件。' },
+  { name: '做幻灯片', desc: '浏览器里可放映的 HTML', tpl: '帮我做一份关于「____」的幻灯片：生成单文件 HTML（左右方向键翻页、设计简洁大方），保存为 slides.html，做完告诉我在工作空间里打开。' },
+  { name: '整理文档', desc: '读取工作区文件再加工', tpl: '先看看工作区里有哪些文件，然后读取「____」，帮我整理成结构清晰的 Markdown 并另存一份。' },
+  { name: '查资料', desc: '抓网页、汇总要点', tpl: '帮我查「____」：抓取相关网页正文，汇总成要点清单，并把整理结果保存到工作区。' },
+];
+$('skillList').innerHTML = SKILLS.map((s, i) => `
+  <button class="skill" type="button" data-skill="${i}">
+    <span class="sk-name">${s.name}</span>
+    <span class="sk-desc">${s.desc}</span>
+  </button>`).join('');
+document.querySelectorAll('[data-skill]').forEach((b) => b.addEventListener('click', () => {
+  const s = SKILLS[Number(b.dataset.skill)];
+  const radio = document.querySelector('#modeSwitch input[value="agent"]');
+  if (radio && !radio.checked) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+  input.value = s.tpl;
+  sendBtn.disabled = false;
+  $('mokuji').classList.remove('is-open');
+  input.focus();
+  const idx = s.tpl.indexOf('____');
+  if (idx >= 0) input.setSelectionRange(idx, idx + 4);
+}));
+
 // ---------- 启动 ----------
-(async () => { await loadState(); await loadSessions(); })();
+(async () => { await loadState(); await loadSessions(); await loadMemory(); })();
 </script>
 </body>
 </html>

@@ -54,6 +54,24 @@ const safeId = (id) => /^[a-z0-9-]{6,64}$/.test(id);
 const configFile = join(DATA, 'config.json');
 const characterFile = join(DATA, 'character.json');
 const avatarFile = join(DATA, 'avatar');
+const memoryFile = join(DATA, 'memory.json');
+
+// ---------- 记忆（v0.2）：画像 + 事实清单，全部本机、可见可删 ----------
+async function getMemory() {
+  const m = (await readJSON(memoryFile, {})) || {};
+  return { enabled: m.enabled !== false, profile: m.profile || '', facts: Array.isArray(m.facts) ? m.facts : [] };
+}
+async function saveMemory(m) { await writeJSON(memoryFile, m); }
+function addFact(memory, text, from) {
+  const t = String(text || '').trim().slice(0, 200);
+  if (!t) return null;
+  // 简单去重：完全相同的事实不重复记
+  if (memory.facts.some((f) => f.text === t)) return null;
+  const fact = { id: randomUUID().slice(0, 8), text: t, from: from || 'manual', at: new Date().toISOString() };
+  memory.facts.push(fact);
+  if (memory.facts.length > 200) memory.facts = memory.facts.slice(-200); // 上限保护
+  return fact;
+}
 
 async function getConfig() {
   const config = (await readJSON(configFile, {})) || {};
@@ -64,13 +82,23 @@ async function getConfig() {
 function maskKey(key) { return key ? key.slice(0, 10) + '…' + key.slice(-4) : null; }
 
 // ---------- 角色扮演 system prompt ----------
-function buildSystemPrompt(card, config = {}) {
+function buildSystemPrompt(card, config = {}, memory = null) {
   const userLines = [];
   if (config.userName) userLines.push(`称呼用户为「${config.userName}」。`);
   if (config.userBio) userLines.push(`关于用户：${config.userBio}`);
   const userInfo = userLines.length ? '\n\n用户信息：\n' + userLines.join('\n') : '';
+  let memoryInfo = '';
+  if (memory && memory.enabled && (memory.profile || memory.facts.length)) {
+    const lines = [];
+    if (memory.profile) lines.push('用户画像（由过往对话沉淀，可能不完整）：' + memory.profile);
+    if (memory.facts.length) {
+      const recent = memory.facts.slice(-40).map((f) => '- ' + f.text);
+      lines.push('已记住的事实：\n' + recent.join('\n'));
+    }
+    memoryInfo = '\n\n长期记忆：\n' + lines.join('\n') + '\n（自然地运用这些记忆，不要生硬复述；如果记忆与用户当前所说矛盾，以用户当前所说为准。）';
+  }
   if (!card || !card.name) {
-    return '你是 2CY Agent 的默认助手。用中文简洁、务实地回复。用户还没有创建角色卡：如果对话合适，可以提醒用户在右侧「角色」面板上传角色图并填写角色名，让专属角色登场。' + userInfo;
+    return '你是 2CY Agent 的默认助手。用中文简洁、务实地回复。用户还没有创建角色卡：如果对话合适，可以提醒用户在右侧「角色」面板上传角色图并填写角色名，让专属角色登场。' + userInfo + memoryInfo;
   }
   const lines = [
     `你正在扮演「${card.name}」${card.source ? `，出自《${card.source}》` : ''}。用户明确知道这是角色扮演，请始终保持角色身份。`,
@@ -86,7 +114,7 @@ function buildSystemPrompt(card, config = {}) {
     '- 被直接问到时可以坦然承认自己是 AI 在扮演该角色，不需要否认。',
     '- 回答问题和完成任务时保证内容质量，角色感体现在语气而非牺牲准确性。',
   ].filter((l) => l !== null && l !== undefined && l !== '');
-  return lines.join('\n') + userInfo;
+  return lines.join('\n') + userInfo + memoryInfo;
 }
 
 // ---------- LLM 调用（BYOK，双协议，零依赖） ----------
@@ -187,6 +215,11 @@ const TOOLS = [
     description: '列出工作区里的所有文件。',
     input_schema: { type: 'object', properties: {}, required: [] },
   },
+  {
+    name: 'remember',
+    description: '把关于用户的一条重要事实存入长期记忆（例如偏好、习惯、正在做的事、重要日期）。只记稳定、跨对话有用的信息，不记一次性琐事。',
+    input_schema: { type: 'object', properties: { fact: { type: 'string', description: '一句话事实，40 字以内' } }, required: ['fact'] },
+  },
 ];
 
 function safeName(name) {
@@ -222,6 +255,14 @@ async function execTool(name, input) {
     const files = await readdir(WORKSPACE).catch(() => []);
     return files.length ? files.join('\n') : '（工作区还是空的）';
   }
+  if (name === 'remember') {
+    const memory = await getMemory();
+    if (!memory.enabled) return '记忆功能已被用户关闭，本条未保存。';
+    const fact = addFact(memory, input.fact, 'agent');
+    if (!fact) return '这条已经记过了（或内容为空）。';
+    await saveMemory(memory);
+    return '已记住：' + fact.text;
+  }
   throw new Error('未知工具：' + name);
 }
 function stepLabel(name, input) {
@@ -229,6 +270,7 @@ function stepLabel(name, input) {
   if (name === 'save_file') return `保存文件 · ${input.filename}`;
   if (name === 'read_file') return `读取文件 · ${input.filename}`;
   if (name === 'list_files') return '查看工作区文件';
+  if (name === 'remember') return `记住 · ${String(input.fact || '').slice(0, 40)}`;
   return name;
 }
 
@@ -308,6 +350,74 @@ async function runTurn(config, { system, history, mode }) {
 // ---------- API 路由 ----------
 async function handleApi(req, res, url) {
   const parts = url.pathname.split('/').filter(Boolean); // ['api', ...]
+
+  // ---------- 记忆（v0.2） ----------
+  if (req.method === 'GET' && url.pathname === '/api/memory') {
+    return send(res, 200, await getMemory());
+  }
+  if (req.method === 'PUT' && url.pathname === '/api/memory') {
+    const body = await readBody(req);
+    const memory = await getMemory();
+    if (typeof body.enabled === 'boolean') memory.enabled = body.enabled;
+    if (typeof body.profile === 'string') memory.profile = body.profile.trim().slice(0, 600);
+    await saveMemory(memory);
+    return send(res, 200, memory);
+  }
+  if (req.method === 'POST' && url.pathname === '/api/memory/facts') {
+    const body = await readBody(req);
+    const memory = await getMemory();
+    const fact = addFact(memory, body.text, 'manual');
+    if (!fact) return send(res, 400, { error: '内容为空或已存在' });
+    await saveMemory(memory);
+    return send(res, 200, fact);
+  }
+  if (req.method === 'DELETE' && parts[1] === 'memory' && parts[2] === 'facts' && parts[3]) {
+    const memory = await getMemory();
+    memory.facts = memory.facts.filter((f) => f.id !== parts[3]);
+    await saveMemory(memory);
+    return send(res, 200, { ok: true });
+  }
+  // 沉淀：把一个会话的对话内容提炼为画像更新 + 新事实（消耗一次用户的 LLM 调用）
+  if (req.method === 'POST' && url.pathname === '/api/memory/distill') {
+    const body = await readBody(req);
+    if (!body.sessionId || !safeId(body.sessionId)) return send(res, 400, { error: '需要 sessionId' });
+    const s = await readJSON(join(SESSIONS, `${body.sessionId}.json`));
+    if (!s || !s.messages.length) return send(res, 404, { error: '会话不存在或还是空的' });
+    const config = await getConfig();
+    if (!config.apiKey && config.provider !== 'ollama') return send(res, 401, { error: '先在「设置」里填入 API key。' });
+    const memory = await getMemory();
+    if (!memory.enabled) return send(res, 400, { error: '记忆功能已关闭，先在左栏打开。' });
+    const transcript = s.messages.slice(-40)
+      .map((m) => (m.role === 'user' ? '用户' : '助手') + '：' + String(m.text || '').slice(0, 500))
+      .join('\n');
+    const schema = {
+      type: 'object',
+      properties: {
+        profile: { type: 'string', description: '更新后的用户画像，一段话，120 字以内。基于旧画像微调，没有新信息就原样返回。' },
+        facts: { type: 'array', items: { type: 'string' }, description: '本次对话中值得长期记住的新事实，每条 40 字以内，0-5 条。已记住的不要重复。' },
+      },
+      required: ['profile', 'facts'],
+      additionalProperties: false,
+    };
+    try {
+      const { text } = await callLLM(config, {
+        system: '你是记忆整理助手。根据对话记录，更新用户画像并提取值得长期记住的新事实（偏好、习惯、身份、正在做的事、重要日期）。只记稳定、跨对话有用的信息；宁缺毋滥。输出 JSON。',
+        messages: [{ role: 'user', content: `旧画像：${memory.profile || '（暂无）'}\n\n已记住的事实：\n${memory.facts.slice(-40).map((f) => '- ' + f.text).join('\n') || '（暂无）'}\n\n对话记录：\n${transcript}` }],
+        jsonSchema: schema,
+      });
+      const out = extractJSON(text);
+      if (typeof out.profile === 'string' && out.profile.trim()) memory.profile = out.profile.trim().slice(0, 600);
+      const added = [];
+      for (const f of Array.isArray(out.facts) ? out.facts.slice(0, 5) : []) {
+        const fact = addFact(memory, f, 'distill');
+        if (fact) added.push(fact);
+      }
+      await saveMemory(memory);
+      return send(res, 200, { profile: memory.profile, added, total: memory.facts.length });
+    } catch (e) {
+      return send(res, e.status || 502, { error: e.message });
+    }
+  }
 
   // 应用状态
   if (req.method === 'GET' && url.pathname === '/api/state') {
@@ -484,8 +594,9 @@ async function handleApi(req, res, url) {
       s.messages.push({ role: 'user', text, at: new Date().toISOString() });
       if (s.title === '白纸一页') s.title = text.slice(0, 14);
       const card = await readJSON(characterFile);
-      let system = buildSystemPrompt(card, config);
-      if (mode === 'agent') system += '\n\n你现在处于 Agent 模式，可以调用工具（抓网页、读写工作区文件）完成任务。需要时果断使用工具，多步任务可以连续调用；完成后用中文简洁汇报结果。';
+      const memory = await getMemory();
+      let system = buildSystemPrompt(card, config, memory);
+      if (mode === 'agent') system += '\n\n你现在处于 Agent 模式，可以调用工具（抓网页、读写工作区文件、remember 记忆）完成任务。需要时果断使用工具，多步任务可以连续调用；用户透露值得长期记住的信息时用 remember 记下；完成后用中文简洁汇报结果。';
       try {
         const { text: reply, thinking, steps } = await runTurn(config, {
           system,
