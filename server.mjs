@@ -293,12 +293,19 @@ async function runTurn(config, { system, history, mode }) {
     };
     if (mode === 'expert') body.thinking = { type: 'adaptive', display: 'summarized' };
     if (mode === 'agent') body.tools = TOOLS;
+    // Anthropic 官方联网搜索（服务端工具，按次计费走用户自己的 key）
+    if (config.webSearch === true) {
+      body.tools = [...(body.tools || []), { type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];
+    }
 
     let thinking = '';
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
       const data = await fetchLLM(base + '/v1/messages', headers, body);
       if (data.stop_reason === 'refusal') return { text: '（这个话题我不能接。换个方向聊聊？）', thinking, steps };
-      for (const b of data.content || []) if (b.type === 'thinking' && b.thinking) thinking += b.thinking + '\n';
+      for (const b of data.content || []) {
+        if (b.type === 'thinking' && b.thinking) thinking += b.thinking + '\n';
+        if (b.type === 'server_tool_use' && b.name === 'web_search') steps.push({ label: `联网搜索 · ${String(b.input?.query || '').slice(0, 40)}` });
+      }
       const toolUses = (data.content || []).filter((b) => b.type === 'tool_use');
       if (data.stop_reason !== 'tool_use' || !toolUses.length || round === MAX_TOOL_ROUNDS) {
         const text = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n\n');
@@ -322,9 +329,18 @@ async function runTurn(config, { system, history, mode }) {
   const headers = config.apiKey ? { authorization: 'Bearer ' + config.apiKey } : {};
   const oaMessages = [{ role: 'system', content: system }, ...history.map((m) => ({ role: m.role, content: m.content }))];
   const body = { model, max_tokens: 8192, messages: oaMessages };
+  const oaTools = [];
   if (mode === 'agent') {
-    body.tools = TOOLS.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }));
+    oaTools.push(...TOOLS.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } })));
   }
+  // 提供商原生联网搜索：Kimi 内建 $web_search（搜索在服务端执行，参数原样回传即可）；GLM 的 web_search 工具
+  if (config.webSearch === true && config.provider === 'kimi') {
+    oaTools.push({ type: 'builtin_function', function: { name: '$web_search' } });
+  }
+  if (config.webSearch === true && config.provider === 'glm') {
+    oaTools.push({ type: 'web_search', web_search: { enable: true, search_result: true } });
+  }
+  if (oaTools.length) body.tools = oaTools;
   let thinking = '';
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const data = await fetchLLM(base + '/chat/completions', headers, body);
@@ -336,6 +352,12 @@ async function runTurn(config, { system, history, mode }) {
     }
     oaMessages.push({ role: 'assistant', content: msg.content || null, tool_calls: toolCalls });
     for (const c of toolCalls) {
+      // Kimi 内建搜索：搜索由 Kimi 服务端完成，客户端只需把 arguments 原样回传
+      if (c.function?.name === '$web_search') {
+        steps.push({ label: '联网搜索', error: false });
+        oaMessages.push({ role: 'tool', tool_call_id: c.id, content: c.function.arguments || '{}' });
+        continue;
+      }
       let input = {};
       try { input = JSON.parse(c.function?.arguments || '{}'); } catch {}
       let result, isError = false;
@@ -429,6 +451,7 @@ async function handleApi(req, res, url) {
       baseUrl: config.baseUrl || '',
       model: config.model || DEFAULT_MODEL,
       maskedKey: maskKey(config.apiKey),
+      webSearch: config.webSearch === true,
       userName: config.userName || '',
       userBio: config.userBio || '',
       character: card,
@@ -474,6 +497,7 @@ async function handleApi(req, res, url) {
     if (typeof body.apiKey === 'string' && body.apiKey.trim()) config.apiKey = body.apiKey.trim();
     if (body.clearApiKey === true) delete config.apiKey;
     if (typeof body.model === 'string' && body.model.trim()) config.model = body.model.trim();
+    if (typeof body.webSearch === 'boolean') config.webSearch = body.webSearch;
     if (typeof body.userName === 'string') config.userName = body.userName.trim();
     if (typeof body.userBio === 'string') config.userBio = body.userBio.trim();
     await writeJSON(configFile, config);
@@ -484,6 +508,7 @@ async function handleApi(req, res, url) {
       baseUrl: config.baseUrl || '',
       model: config.model || DEFAULT_MODEL,
       maskedKey: maskKey(config.apiKey),
+      webSearch: config.webSearch === true,
     });
   }
 

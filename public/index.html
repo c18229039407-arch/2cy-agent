@@ -402,6 +402,10 @@
               <label for="apiKeyInput">API Key</label>
               <input id="apiKeyInput" type="password" autocomplete="off">
             </div>
+            <div>
+              <label class="mem-toggle" style="font-size:.875rem"><input type="checkbox" id="webSearchToggle">联网搜索（提供商原生）</label>
+              <p class="sub" style="margin-top:4px">目前支持 Anthropic / Kimi / 智谱 GLM 的官方搜索工具，搜索由提供商侧执行、费用走你的 key（Anthropic 按次计费）。其他提供商暂无此能力，开关不生效。</p>
+            </div>
             <div class="row-btns"><span class="form-msg" id="providerMsg"></span><button class="btn" type="button" id="saveProviderBtn">保存</button></div>
           </div>
         </section>
@@ -446,11 +450,11 @@
 
         <section data-panel="about" hidden>
           <div class="about-block">
-            <p class="about-title">2CY AGENT <span>v0.2</span></p>
+            <p class="about-title">2CY AGENT <span>v0.3</span></p>
             <p class="sub">开源、本地优先的二次元 Agent——上传一张图，让你喜欢的角色住进电脑。界面是一张日漫黑白线稿风的「作者原稿桌」。</p>
             <ul class="rail-list">
-              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 长期记忆与画像 · 技能面板</li>
-              <li><span class="k">开发中</span>转线稿 · 联网搜索 · MCP · 手机端</li>
+              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 长期记忆与画像 · 技能面板 · 原生联网搜索</li>
+              <li><span class="k">开发中</span>转线稿 · MCP · 手机端</li>
               <li><span class="k">许可</span>MIT · 角色版权归原权利人，上传内容用户自负</li>
             </ul>
           </div>
@@ -540,6 +544,7 @@ $('settingsBtn').addEventListener('click', () => {
   $('modelInput').value = state.model || PROVIDERS[p].models[0] || '';
   $('apiKeyInput').value = '';
   $('apiKeyInput').placeholder = state.maskedKey || PROVIDERS[p].keyHint;
+  $('webSearchToggle').checked = state.webSearch === true;
   $('userNameInput').value = state.userName || '';
   $('userBioInput').value = state.userBio || '';
   $('providerMsg').textContent = ''; $('meMsg').textContent = ''; $('secMsg').textContent = '';
@@ -550,7 +555,7 @@ $('settingsClose').addEventListener('click', () => $('settingsDialog').close());
 
 // 供应商保存
 $('saveProviderBtn').addEventListener('click', async () => {
-  const body = { provider: currentProvider(), baseUrl: $('baseUrlInput').value.trim(), model: $('modelInput').value.trim() };
+  const body = { provider: currentProvider(), baseUrl: $('baseUrlInput').value.trim(), model: $('modelInput').value.trim(), webSearch: $('webSearchToggle').checked };
   if ($('apiKeyInput').value.trim()) body.apiKey = $('apiKeyInput').value.trim();
   try {
     await api('/api/config', { method: 'PUT', body: JSON.stringify(body) });
