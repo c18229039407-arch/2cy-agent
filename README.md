@@ -52,6 +52,10 @@ node server.mjs   # 或 npm start
 | Ollama（本地，免 key） | OpenAI 兼容 | 127.0.0.1:11434/v1 |
 | 自定义 | OpenAI 兼容 | 任意兼容服务 |
 
+## 开发与测试
+
+零依赖测试套件（Node 内置 test runner）：`npm test` —— 覆盖 API 冒烟、路径穿越防护、请求体限制、密钥掩码等安全回归。
+
 ## 隐私
 
 - **本地优先**：对话记录、角色卡、长期记忆、API key 全部存在本机 `./data/` 目录，服务只监听 `127.0.0.1`；

@@ -4,13 +4,13 @@
 import { createServer } from 'node:http';
 import { exec, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFile, writeFile, mkdir, readdir, unlink, chmod, stat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, unlink, chmod, stat, rename } from 'node:fs/promises';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(ROOT, 'public');
-const DATA = join(ROOT, 'data');
+const DATA = process.env.DATA_DIR || join(ROOT, 'data');
 const SESSIONS = join(DATA, 'sessions');
 const PORT = Number(process.env.PORT || 2333);
 const LAN_MODE = process.argv.includes('--lan');
@@ -28,7 +28,10 @@ async function readJSON(file, fallback = null) {
   try { return JSON.parse(await readFile(file, 'utf8')); } catch { return fallback; }
 }
 async function writeJSON(file, value) {
-  await writeFile(file, JSON.stringify(value, null, 2));
+  // 原子写：写临时文件后 rename，避免进程中断留下半损坏的 JSON
+  const tmp = file + '.tmp-' + process.pid + '-' + Date.now();
+  await writeFile(tmp, JSON.stringify(value, null, 2));
+  await rename(tmp, file);
 }
 function send(res, status, value) {
   const body = JSON.stringify(value);
@@ -370,7 +373,13 @@ async function execTool(name, input) {
   if (name === 'fetch_url') {
     const u = new URL(String(input.url));
     if (!/^https?:$/.test(u.protocol)) throw new Error('只支持 http/https');
-    if (/^(localhost|127\.|0\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(u.hostname)) throw new Error('不允许访问内网地址');
+    const host = u.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    const blocked = /^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host) // IPv4 内网/回环/链路本地
+      || host === '::1' || host === '::' // IPv6 回环
+      || /^(fe80|fc00|fd)/.test(host)     // IPv6 链路本地 / 唯一本地
+      || /^::ffff:(127|10|192\.168|169\.254)/.test(host) // IPv4-mapped IPv6
+      || /^\d+$/.test(host);              // 纯十进制 IP（如 2130706433）
+    if (blocked) throw new Error('不允许访问内网地址');
     const res = await fetch(u, { signal: AbortSignal.timeout(20_000), headers: { 'user-agent': 'Mozilla/5.0 2CYAgent/0.1' } });
     const html = await res.text();
     const text = html
@@ -934,6 +943,15 @@ createServer(async (req, res) => {
   // 局域网模式：非本机请求需配对码（一次输入，cookie 保持）
   if (LAN_MODE && !isLocalReq(req)) {
     const code = await getLanCode();
+    // Origin 校验：拦截跨源写请求（防局域网内恶意页面借用已配对的 cookie）
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const origin = req.headers.origin;
+      if (origin) {
+        const host = req.headers.host;
+        try { if (new URL(origin).host !== host) { res.writeHead(403, { 'content-type': 'application/json' }); return res.end('{"error":"跨源请求被拒绝"}'); } }
+        catch { res.writeHead(403, { 'content-type': 'application/json' }); return res.end('{"error":"非法来源"}'); }
+      }
+    }
     if (!hasLanAuth(req, code)) {
       const u = new URL(req.url, 'http://x');
       const given = u.searchParams.get('code');
