@@ -59,7 +59,7 @@ const memoryFile = join(DATA, 'memory.json');
 // ---------- 记忆（v0.2）：画像 + 事实清单，全部本机、可见可删 ----------
 async function getMemory() {
   const m = (await readJSON(memoryFile, {})) || {};
-  return { enabled: m.enabled !== false, profile: m.profile || '', facts: Array.isArray(m.facts) ? m.facts : [] };
+  return { enabled: m.enabled !== false, autoDistill: m.autoDistill === true, profile: m.profile || '', facts: Array.isArray(m.facts) ? m.facts : [] };
 }
 async function saveMemory(m) { await writeJSON(memoryFile, m); }
 function addFact(memory, text, from) {
@@ -381,6 +381,7 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const memory = await getMemory();
     if (typeof body.enabled === 'boolean') memory.enabled = body.enabled;
+    if (typeof body.autoDistill === 'boolean') memory.autoDistill = body.autoDistill;
     if (typeof body.profile === 'string') memory.profile = body.profile.trim().slice(0, 600);
     await saveMemory(memory);
     return send(res, 200, memory);

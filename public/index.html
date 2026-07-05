@@ -95,6 +95,15 @@
   .skill .sk-name { font-size: .875rem; color: var(--ink); display: block; }
   .skill .sk-desc { font-size: .74rem; color: var(--ink-faint); display: block; margin-top: 1px; }
   .fact-text { flex: 1; min-width: 0; font-size: .85rem; color: var(--ink-soft); padding: 6px 0; }
+  .session-search { width: 100%; font-family: var(--font-body); font-size: .82rem; color: var(--ink); background: var(--paper); border: 1.5px solid var(--pencil); padding: 6px 9px; margin: 0 0 4px; }
+  .session-search:focus { outline: none; border-color: var(--ink); }
+  .sgroup { font-size: .7rem; color: var(--ink-faint); letter-spacing: .12em; padding: 10px 8px 2px; }
+  .user-bar { flex: 0 0 auto; margin-top: 10px; padding: 12px 8px 4px; position: relative; display: flex; align-items: center; gap: 9px; cursor: pointer; background: none; border: none; width: 100%; text-align: left; font-family: var(--font-body); }
+  .user-bar::before { content: ''; position: absolute; top: 0; left: 4px; right: 4px; border-top: 1.5px dashed var(--pencil); filter: url(#rough-sm); }
+  .user-bar:hover { background: var(--hover-wash); }
+  .user-avatar { width: 26px; height: 26px; flex: 0 0 26px; border: 1.5px solid var(--ink); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .78rem; color: var(--ink); }
+  .user-bar .u-name { flex: 1; min-width: 0; font-size: .85rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-bar .u-set { font-size: .75rem; color: var(--ink-faint); }
   .set-fields textarea { width: 100%; resize: vertical; font-family: var(--font-body); font-size: .875rem; color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); padding: 9px 10px; }
   .session-del:hover { color: var(--ink); }
   .mokuji-empty { font-size: .78rem; color: var(--ink-faint); padding: 8px; line-height: 1.8; }
@@ -319,22 +328,21 @@
       <h2>回目</h2>
       <button class="btn" type="button" id="newSessionBtn">＋ 新的一话</button>
     </div>
-    <div id="sessionList" class="session-scroll"></div>
-    <div class="side-sec" aria-label="记忆">
-      <div class="mokuji-head">
-        <h2>记忆</h2>
-        <label class="mem-toggle"><input type="checkbox" id="memToggle">开启</label>
-      </div>
-      <div id="memSummary" class="side-body"></div>
-      <div class="side-btns">
-        <button class="btn" type="button" id="distillBtn">沉淀本话</button>
-        <button class="btn-link" type="button" id="memManageBtn">管理</button>
-      </div>
-    </div>
+    <input class="session-search" id="sessionSearch" type="search" placeholder="搜索会话…" aria-label="搜索会话">
     <div class="side-sec" aria-label="技能">
       <div class="mokuji-head"><h2>技能</h2></div>
       <div id="skillList"></div>
+      <button class="skill" type="button" id="wsEntryBtn">
+        <span class="sk-name">工作空间</span>
+        <span class="sk-desc">她干活的产出文件</span>
+      </button>
     </div>
+    <div id="sessionList" class="session-scroll"></div>
+    <button class="user-bar" type="button" id="userBar" aria-label="打开个人设置">
+      <span class="user-avatar" id="userAvatar">？</span>
+      <span class="u-name" id="userBarName">点此设置称呼</span>
+      <span class="u-set">设置 ›</span>
+    </button>
   </nav>
 
   <main class="genko">
@@ -420,8 +428,13 @@
         </section>
 
         <section data-panel="memory" hidden>
-          <p class="sub">她对你的长期记忆：一段画像 + 一份事实清单，全部存在本机 data/memory.json——你随时可见、可改、可删。左栏「沉淀本话」会用你的 API 额度做一次总结提炼。</p>
+          <p class="sub">她对你的长期记忆：一段画像 + 一份事实清单，全部存在本机 data/memory.json——你随时可见、可改、可删。「沉淀」会调用一次你的模型（消耗你的 API 额度）做总结提炼。</p>
           <div class="set-fields">
+            <div class="row-btns" style="justify-content:flex-start;flex-wrap:wrap;gap:14px">
+              <label class="mem-toggle" style="font-size:.875rem"><input type="checkbox" id="memEnabledToggle">开启记忆</label>
+              <label class="mem-toggle" style="font-size:.875rem"><input type="checkbox" id="autoDistillToggle">自动沉淀（切换或关闭会话时自动总结，每次消耗一次模型调用）</label>
+              <button class="btn" type="button" id="distillNowBtn">立即沉淀当前会话</button>
+            </div>
             <div><label for="memProfileInput">用户画像</label><textarea id="memProfileInput" rows="3" placeholder="她眼中的你。可以手写，也可以由「沉淀」自动生成。"></textarea></div>
             <div class="row-btns"><span class="form-msg" id="memMsg"></span><button class="btn" type="button" id="saveMemProfileBtn">保存画像</button></div>
             <div><label>事实清单</label><div id="memFactList"></div></div>
@@ -450,10 +463,10 @@
 
         <section data-panel="about" hidden>
           <div class="about-block">
-            <p class="about-title">2CY AGENT <span>v0.3</span></p>
+            <p class="about-title">2CY AGENT <span>v0.4</span></p>
             <p class="sub">开源、本地优先的二次元 Agent——上传一张图，让你喜欢的角色住进电脑。界面是一张日漫黑白线稿风的「作者原稿桌」。</p>
             <ul class="rail-list">
-              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 长期记忆与画像 · 技能面板 · 原生联网搜索</li>
+              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 记忆与画像（自动/手动沉淀） · 技能面板 · 原生联网搜索 · 会话搜索与时间分组</li>
               <li><span class="k">开发中</span>转线稿 · MCP · 手机端</li>
               <li><span class="k">许可</span>MIT · 角色版权归原权利人，上传内容用户自负</li>
             </ul>
@@ -500,6 +513,8 @@ async function loadState() {
   const p = PROVIDERS[state.provider] ? state.provider : 'custom';
   $('modelChip').textContent = state.configured ? `${p} · ${state.model}` : '未配置 API key';
   $('modelChip').classList.toggle('warn', !state.configured);
+  $('userBarName').textContent = state.userName || '点此设置称呼';
+  $('userAvatar').textContent = (state.userName || '？').slice(0, 1);
   renderRail();
 }
 function currentProvider() {
@@ -753,17 +768,36 @@ async function loadSessions() {
   if (!activeId && sessions.length) return openSession(sessions[0].id);
   if (!sessions.length) return newSession();
 }
+let sessionQuery = '';
+function timeGroup(iso) {
+  const d = new Date(iso), now = new Date();
+  const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 86400000);
+  if (diff <= 0) return '今天';
+  if (diff === 1) return '昨天';
+  if (diff < 7) return '近 7 天';
+  return '更早';
+}
 function renderSessionList() {
   const list = $('sessionList');
   if (!sessions.length) { list.innerHTML = '<p class="mokuji-empty">还没有对话。点上面「新的一话」开始。</p>'; return; }
-  list.innerHTML = sessions.map((s, i) => `
+  const q = sessionQuery.trim().toLowerCase();
+  let html = '', lastGroup = null, shown = 0;
+  sessions.forEach((s, i) => {
+    if (q && !String(s.title).toLowerCase().includes(q)) return;
+    const g = timeGroup(s.updatedAt);
+    if (g !== lastGroup) { html += `<div class="sgroup">${g}</div>`; lastGroup = g; }
+    shown++;
+    html += `
     <div class="session-row">
       <button class="session" data-id="${s.id}" ${s.id === activeId ? 'aria-current="true"' : ''}>
         <span class="no">第 ${sessions.length - i} 话</span>
         <span class="name">${esc(s.title)}</span>
       </button>
       <button class="session-del" data-del="${s.id}" aria-label="删除这一话">✕</button>
-    </div>`).join('');
+    </div>`;
+  });
+  list.innerHTML = shown ? html : '<p class="mokuji-empty">没有匹配「' + esc(sessionQuery) + '」的会话。</p>';
   list.querySelectorAll('.session').forEach((b) => b.addEventListener('click', () => { openSession(b.dataset.id); $('mokuji').classList.remove('is-open'); }));
   list.querySelectorAll('.session-del').forEach((b) => b.addEventListener('click', async () => {
     if (!confirm('删除这一话？对话记录会一并删除。')) return;
@@ -774,6 +808,10 @@ function renderSessionList() {
 }
 let cacheMessages = [];
 async function openSession(id) {
+  if (memory.autoDistill && memory.enabled && sessionDirty && activeId && activeId !== id) {
+    distillSession(activeId); // 后台沉淀上一话，不阻塞切换
+    sessionDirty = false;
+  }
   const s = await api('/api/sessions/' + id);
   activeId = id;
   cacheMessages = s.messages;
@@ -866,6 +904,7 @@ $('composerForm').addEventListener('submit', async (e) => {
   try {
     const r = await api('/api/sessions/' + activeId + '/messages', { method: 'POST', body: JSON.stringify({ text, mode }) });
     cacheMessages.push({ role: 'assistant', text: r.reply, thinking: r.thinking || '', steps: r.steps || [] });
+    sessionDirty = true;
     $('sessionTitle').textContent = r.title;
   } catch (err) {
     cacheMessages.push({ role: 'assistant', text: err.message, error: true });
@@ -884,49 +923,32 @@ $('menuBtn').addEventListener('click', () => {
   $('menuBtn').setAttribute('aria-expanded', String(open));
 });
 
-// ---------- 记忆（v0.2） ----------
-let memory = { enabled: true, profile: '', facts: [] };
+// ---------- 记忆（v0.4）：管理收进设置，支持自动沉淀 ----------
+let memory = { enabled: true, autoDistill: false, profile: '', facts: [] };
+let sessionDirty = false; // 当前会话是否有未沉淀的新消息
 async function loadMemory() {
   memory = await api('/api/memory').catch(() => memory);
-  renderMemorySide();
 }
-function renderMemorySide() {
-  $('memToggle').checked = memory.enabled;
-  if (!memory.enabled) {
-    $('memSummary').innerHTML = '<div class="dim">记忆已关闭，她不会记住你说过的话。</div>';
-  } else {
-    const brief = memory.profile ? esc(memory.profile.slice(0, 56)) + (memory.profile.length > 56 ? '…' : '') : '';
-    $('memSummary').innerHTML =
-      (brief ? '<div>' + brief + '</div>' : '<div class="dim">还没有画像——聊几句后点「沉淀本话」。</div>') +
-      '<div class="dim">已记住 ' + memory.facts.length + ' 条事实</div>';
+async function distillSession(id, opts = {}) {
+  if (!id || !memory.enabled) return;
+  if (opts.beacon && navigator.sendBeacon) {
+    navigator.sendBeacon('/api/memory/distill', JSON.stringify({ sessionId: id }));
+    return;
   }
-  $('distillBtn').disabled = !memory.enabled || pending;
-}
-$('memToggle').addEventListener('change', async () => {
-  memory = await api('/api/memory', { method: 'PUT', body: JSON.stringify({ enabled: $('memToggle').checked }) }).catch(() => memory);
-  renderMemorySide();
-});
-$('distillBtn').addEventListener('click', async () => {
-  if (!activeId) return;
-  $('distillBtn').disabled = true;
-  $('distillBtn').textContent = '沉淀中…';
   try {
-    const r = await api('/api/memory/distill', { method: 'POST', body: JSON.stringify({ sessionId: activeId }) });
+    const r = await api('/api/memory/distill', { method: 'POST', body: JSON.stringify({ sessionId: id }) });
     await loadMemory();
-    $('memSummary').insertAdjacentHTML('beforeend', '<div class="dim">✓ 本次新增 ' + r.added.length + ' 条</div>');
-  } catch (e) {
-    $('memSummary').insertAdjacentHTML('beforeend', '<div class="dim">沉淀失败：' + esc(e.message) + '</div>');
-  } finally {
-    $('distillBtn').textContent = '沉淀本话';
-    $('distillBtn').disabled = !memory.enabled;
-  }
-});
-$('memManageBtn').addEventListener('click', () => {
-  $('settingsBtn').click();
-  switchTab('memory');
+    return r;
+  } catch (e) { return { error: e.message }; }
+}
+// 关闭页面时自动沉淀（需在设置中开启）
+window.addEventListener('beforeunload', () => {
+  if (memory.autoDistill && memory.enabled && sessionDirty && activeId) distillSession(activeId, { beacon: true });
 });
 async function loadMemoryPanel() {
   memory = await api('/api/memory').catch(() => memory);
+  $('memEnabledToggle').checked = memory.enabled;
+  $('autoDistillToggle').checked = memory.autoDistill === true;
   $('memProfileInput').value = memory.profile || '';
   const list = $('memFactList');
   list.innerHTML = memory.facts.length
@@ -935,17 +957,30 @@ async function loadMemoryPanel() {
         <span class="fact-text">${esc(f.text)}</span>
         <button class="btn-link" data-delfact="${f.id}">删除</button>
       </div>`).join('')
-    : '<p class="ws-empty">还没有记住任何事实。对话后点左栏「沉淀本话」，或在下面手动添加。</p>';
+    : '<p class="ws-empty">还没有记住任何事实。开启自动沉淀、点「立即沉淀」，或在下面手动添加。</p>';
   list.querySelectorAll('[data-delfact]').forEach((b) => b.addEventListener('click', async () => {
     await api('/api/memory/facts/' + b.dataset.delfact, { method: 'DELETE' });
     await loadMemoryPanel();
-    renderMemorySide();
   }));
 }
+$('memEnabledToggle').addEventListener('change', async () => {
+  memory = await api('/api/memory', { method: 'PUT', body: JSON.stringify({ enabled: $('memEnabledToggle').checked }) }).catch(() => memory);
+});
+$('autoDistillToggle').addEventListener('change', async () => {
+  memory = await api('/api/memory', { method: 'PUT', body: JSON.stringify({ autoDistill: $('autoDistillToggle').checked }) }).catch(() => memory);
+});
+$('distillNowBtn').addEventListener('click', async () => {
+  if (!activeId) { $('memMsg').textContent = '当前没有会话。'; return; }
+  $('distillNowBtn').disabled = true;
+  $('memMsg').textContent = '沉淀中…';
+  const r = await distillSession(activeId);
+  $('memMsg').textContent = r && r.added ? `完成：新增 ${r.added.length} 条事实。` : `失败：${r && r.error || '未知错误'}`;
+  if (r && r.added) { sessionDirty = false; await loadMemoryPanel(); }
+  $('distillNowBtn').disabled = false;
+});
 $('saveMemProfileBtn').addEventListener('click', async () => {
   try {
     memory = await api('/api/memory', { method: 'PUT', body: JSON.stringify({ profile: $('memProfileInput').value }) });
-    renderMemorySide();
     $('memMsg').textContent = '已保存。';
   } catch (e) { $('memMsg').textContent = e.message; }
 });
@@ -956,9 +991,13 @@ $('addFactBtn').addEventListener('click', async () => {
     await api('/api/memory/facts', { method: 'POST', body: JSON.stringify({ text }) });
     $('newFactInput').value = '';
     await loadMemoryPanel();
-    await loadMemory();
   } catch (e) { $('memMsg').textContent = e.message; }
 });
+
+// ---------- 侧栏：搜索、工作空间入口、底部用户区 ----------
+$('sessionSearch').addEventListener('input', () => { sessionQuery = $('sessionSearch').value; renderSessionList(); });
+$('wsEntryBtn').addEventListener('click', () => { $('settingsBtn').click(); switchTab('workspace'); $('mokuji').classList.remove('is-open'); });
+$('userBar').addEventListener('click', () => { $('settingsBtn').click(); switchTab('me'); $('mokuji').classList.remove('is-open'); });
 
 // ---------- 技能（v0.2）：预设任务模板，点选后进入 Agent 模式 ----------
 const SKILLS = [
