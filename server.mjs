@@ -193,6 +193,27 @@ function extractJSON(text) {
   return JSON.parse(match[0]);
 }
 
+// ---------- 第三方搜索（v0.6）：Tavily，补齐无原生搜索的提供商 ----------
+const WEB_SEARCH_TOOL = {
+  name: 'web_search',
+  description: '联网搜索最新信息。返回若干条结果的标题、链接与摘要。',
+  input_schema: { type: 'object', properties: { query: { type: 'string', description: '搜索关键词' } }, required: ['query'] },
+};
+async function tavilySearch(query) {
+  const config = await getConfig();
+  if (!config.searchApiKey) throw new Error('没有配置搜索 API key（设置 → 供应商 → 搜索 API Key）');
+  const res = await fetch('https://api.tavily.com/search', {
+    method: 'POST',
+    signal: AbortSignal.timeout(20_000),
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + config.searchApiKey },
+    body: JSON.stringify({ query: String(query).slice(0, 200), max_results: 5, search_depth: 'basic' }),
+  });
+  if (!res.ok) throw new Error('搜索服务返回 ' + res.status + (res.status === 401 ? '（搜索 key 无效）' : ''));
+  const data = await res.json();
+  const items = (data.results || []).map((r, i) => `${i + 1}. ${r.title}\n${r.url}\n${String(r.content || '').slice(0, 300)}`);
+  return items.length ? items.join('\n\n').slice(0, 6000) : '（没有搜到相关结果）';
+}
+
 // ---------- Agent 模式：内置工具（v0.1，全部本地安全） ----------
 const WORKSPACE = join(DATA, 'workspace');
 const TOOLS = [
@@ -256,6 +277,9 @@ async function execTool(name, input) {
     const files = await readdir(WORKSPACE).catch(() => []);
     return files.length ? files.join('\n') : '（工作区还是空的）';
   }
+  if (name === 'web_search') {
+    return await tavilySearch(input.query);
+  }
   if (name === 'remember') {
     const memory = await getMemory();
     if (!memory.enabled) return '记忆功能已被用户关闭，本条未保存。';
@@ -272,6 +296,7 @@ function stepLabel(name, input) {
   if (name === 'read_file') return `读取文件 · ${input.filename}`;
   if (name === 'list_files') return '查看工作区文件';
   if (name === 'remember') return `记住 · ${String(input.fact || '').slice(0, 40)}`;
+  if (name === 'web_search') return `联网搜索 · ${String(input.query || '').slice(0, 40)}`;
   return name;
 }
 
@@ -367,6 +392,10 @@ async function runTurn(config, { system, history, mode }) {
   }
   if (config.webSearch === true && config.provider === 'glm') {
     oaTools.push({ type: 'web_search', web_search: { enable: true, search_result: true } });
+  }
+  // 其余提供商没有原生搜索：配置了第三方搜索 key 时挂本地 web_search 工具（由 Tavily 执行）
+  if (config.webSearch === true && !['kimi', 'glm'].includes(config.provider) && config.searchApiKey) {
+    oaTools.push({ type: 'function', function: { name: WEB_SEARCH_TOOL.name, description: WEB_SEARCH_TOOL.description, parameters: WEB_SEARCH_TOOL.input_schema } });
   }
   if (oaTools.length) body.tools = oaTools;
   let thinking = '';
@@ -482,6 +511,7 @@ async function handleApi(req, res, url) {
       model: config.model || DEFAULT_MODEL,
       maskedKey: maskKey(config.apiKey),
       webSearch: config.webSearch === true,
+      maskedSearchKey: maskKey(config.searchApiKey),
       userName: config.userName || '',
       userBio: config.userBio || '',
       character: card,
@@ -528,6 +558,8 @@ async function handleApi(req, res, url) {
     if (body.clearApiKey === true) delete config.apiKey;
     if (typeof body.model === 'string' && body.model.trim()) config.model = body.model.trim();
     if (typeof body.webSearch === 'boolean') config.webSearch = body.webSearch;
+    if (typeof body.searchApiKey === 'string' && body.searchApiKey.trim()) config.searchApiKey = body.searchApiKey.trim();
+    if (body.clearSearchKey === true) delete config.searchApiKey;
     if (typeof body.userName === 'string') config.userName = body.userName.trim();
     if (typeof body.userBio === 'string') config.userBio = body.userBio.trim();
     await writeJSON(configFile, config);

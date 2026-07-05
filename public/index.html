@@ -412,7 +412,9 @@
             </div>
             <div>
               <label class="mem-toggle" style="font-size:.875rem"><input type="checkbox" id="webSearchToggle">联网搜索（提供商原生）</label>
-              <p class="sub" style="margin-top:4px">目前支持 Anthropic / Kimi / 智谱 GLM 的官方搜索工具，搜索由提供商侧执行、费用走你的 key（Anthropic 按次计费）。其他提供商暂无此能力，开关不生效。</p>
+              <p class="sub" style="margin-top:4px">Anthropic / Kimi / 智谱 GLM 走各家官方搜索工具（费用走你的模型 key，Anthropic 按次计费）；其他提供商（DeepSeek、豆包、通义等）在下方填入 Tavily 搜索 key 后同样可以联网搜索。</p>
+              <label for="searchKeyInput" style="margin-top:10px">搜索 API Key（可选，Tavily）</label>
+              <input id="searchKeyInput" type="password" autocomplete="off" placeholder="tvly-…，在 tavily.com 免费申请">
             </div>
             <div class="row-btns"><span class="form-msg" id="providerMsg"></span><button class="btn" type="button" id="saveProviderBtn">保存</button></div>
           </div>
@@ -464,10 +466,10 @@
 
         <section data-panel="about" hidden>
           <div class="about-block">
-            <p class="about-title">2CY AGENT <span>v0.5</span></p>
+            <p class="about-title">2CY AGENT <span>v0.6</span></p>
             <p class="sub">开源、本地优先的二次元 Agent——上传一张图，让你喜欢的角色住进电脑。界面是一张日漫黑白线稿风的「作者原稿桌」。</p>
             <ul class="rail-list">
-              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 记忆与画像（自动/手动沉淀） · 短期记忆前情提要 · 技能面板 · 原生联网搜索 · 会话搜索与时间分组</li>
+              <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 记忆与画像（自动/手动沉淀） · 短期记忆前情提要 · 技能面板 · 联网搜索（原生 + Tavily 补齐全提供商） · 会话搜索与时间分组</li>
               <li><span class="k">开发中</span>转线稿 · MCP · 手机端</li>
               <li><span class="k">许可</span>MIT · 角色版权归原权利人，上传内容用户自负</li>
             </ul>
@@ -561,6 +563,8 @@ $('settingsBtn').addEventListener('click', () => {
   $('apiKeyInput').value = '';
   $('apiKeyInput').placeholder = state.maskedKey || PROVIDERS[p].keyHint;
   $('webSearchToggle').checked = state.webSearch === true;
+  $('searchKeyInput').value = '';
+  $('searchKeyInput').placeholder = state.maskedSearchKey || 'tvly-…，在 tavily.com 免费申请';
   $('userNameInput').value = state.userName || '';
   $('userBioInput').value = state.userBio || '';
   $('providerMsg').textContent = ''; $('meMsg').textContent = ''; $('secMsg').textContent = '';
@@ -572,6 +576,7 @@ $('settingsClose').addEventListener('click', () => $('settingsDialog').close());
 // 供应商保存
 $('saveProviderBtn').addEventListener('click', async () => {
   const body = { provider: currentProvider(), baseUrl: $('baseUrlInput').value.trim(), model: $('modelInput').value.trim(), webSearch: $('webSearchToggle').checked };
+  if ($('searchKeyInput').value.trim()) body.searchApiKey = $('searchKeyInput').value.trim();
   if ($('apiKeyInput').value.trim()) body.apiKey = $('apiKeyInput').value.trim();
   try {
     await api('/api/config', { method: 'PUT', body: JSON.stringify(body) });
