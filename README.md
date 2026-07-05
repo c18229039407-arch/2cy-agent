@@ -4,6 +4,8 @@
 
 整个界面是一张日漫黑白线稿风的「作者原稿桌」：分镜格、对话气泡、手绘墨线、朱红印章。
 
+**产品主页**：https://c18229039407-arch.github.io/2cy-agent/ · **下载**：[Releases](https://github.com/c18229039407-arch/2cy-agent/releases/latest)
+
 ## 快速开始（v0.5 · 电脑端）
 
 唯一的前置要求：安装 [Node.js](https://nodejs.org/) 18 或更高版本（下载 LTS 版一路下一步即可）。本项目零依赖，**不需要** `npm install`。
