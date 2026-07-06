@@ -1,21 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="2CY Agent logo">
-  <!-- 分镜框：手绘感墨线，轻微不规则 -->
+  <!-- 分镜框 -->
   <path d="M16 18 Q14 14 19 13 L108 11 Q114 11 113 17 L115 104 Q115 110 109 110 L20 112 Q14 112 15 106 Z"
         fill="oklch(100% 0 0)" stroke="oklch(22% 0.01 280)" stroke-width="5" stroke-linejoin="round"/>
-  <!-- 集中线：从四周射向中心的漫画张力线 -->
+  <!-- 集中线：短促、避开气泡 -->
   <g stroke="oklch(22% 0.01 280)" stroke-width="3" stroke-linecap="round">
-    <path d="M22 20 L36 31"/><path d="M50 16 L54 28"/><path d="M106 16 L96 29"/>
-    <path d="M110 46 L96 50"/><path d="M110 82 L97 74"/><path d="M84 106 L80 94"/>
-    <path d="M20 88 L33 79"/><path d="M18 52 L32 54"/>
+    <path d="M24 21 L33 29"/><path d="M104 19 L97 28"/>
+    <path d="M109 60 L100 60"/><path d="M104 102 L96 94"/>
+    <path d="M24 100 L32 93"/><path d="M19 60 L28 60"/>
   </g>
-  <!-- 对话气泡：尾巴突破分镜框（破格） -->
-  <path d="M34 44 Q31 38 39 37 Q64 33 90 37 Q97 38 95 45 L96 66 Q97 73 89 73 L56 75 L38 92 L44 74 L40 74 Q32 74 33 67 Z"
+  <!-- 对话气泡：单条连续路径，尾巴一体成型 -->
+  <path d="M38 40 Q34 34 43 33 Q64 30 86 33 Q94 34 92 41 L93 63 Q94 70 86 70 L60 71 L44 89 L50 71 L43 71 Q34 71 35 64 Z"
         fill="oklch(100% 0 0)" stroke="oklch(22% 0.01 280)" stroke-width="4.5" stroke-linejoin="round"/>
-  <!-- 尾巴出框的延伸段，压在框线之上 -->
-  <path d="M50 74 L38 92 L33 118 L44 96" fill="oklch(100% 0 0)" stroke="oklch(22% 0.01 280)" stroke-width="4.5" stroke-linejoin="round"/>
-  <!-- 产品名 -->
-  <text x="64" y="63" text-anchor="middle" font-family="'Ma Shan Zheng','Noto Sans SC',serif"
-        font-weight="900" font-size="24" fill="oklch(22% 0.01 280)" letter-spacing="1">2CY</text>
-  <!-- 朱红闪光漫符：品牌色点睛 -->
-  <path d="M101 24 l2.5 6 6 2.5 -6 2.5 -2.5 6 -2.5 -6 -6 -2.5 6 -2.5 Z" fill="oklch(52% 0.185 30)"/>
+  <!-- 2CY：手绘矢量笔画，不依赖任何字体 -->
+  <g fill="none" stroke="oklch(22% 0.01 280)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M43 47 Q43.5 42.5 48.5 42.5 Q54 43 53.5 48 Q53 52 47.5 56.5 L43 61.5 L54.5 61"/>
+    <path d="M73 46 Q66 41 61 46 Q57.5 50 59 56 Q61 61.5 67 61.5 Q71 61.5 73.5 59"/>
+    <path d="M78 43 L84.5 53 L91 42.5 M84.5 53 L84 62"/>
+  </g>
+  <!-- 朱红闪光漫符 -->
+  <path d="M102 23 l2.5 6 6 2.5 -6 2.5 -2.5 6 -2.5 -6 -6 -2.5 6 -2.5 Z" fill="oklch(52% 0.185 30)"/>
 </svg>
