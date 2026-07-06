@@ -1,8 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="2CY Agent logo">
-  <!-- 对话气泡：手绘感墨线 -->
-  <path d="M20 24 Q15 17 24 15 Q62 9 104 14 Q113 15 111 25 L113 74 Q114 85 103 85 L54 87 L31 106 L36 87 L26 87 Q15 87 17 75 Z"
+  <!-- 分镜框：手绘感墨线，轻微不规则 -->
+  <path d="M16 18 Q14 14 19 13 L108 11 Q114 11 113 17 L115 104 Q115 110 109 110 L20 112 Q14 112 15 106 Z"
         fill="oklch(100% 0 0)" stroke="oklch(22% 0.01 280)" stroke-width="5" stroke-linejoin="round"/>
-  <!-- 产品名：墨线手写「2CY」，无印章、不倾斜 -->
-  <text x="64" y="62" text-anchor="middle" font-family="'Ma Shan Zheng','Noto Sans SC',serif"
-        font-weight="900" font-size="34" fill="oklch(22% 0.01 280)" letter-spacing="2">2CY</text>
+  <!-- 集中线：从四周射向中心的漫画张力线 -->
+  <g stroke="oklch(22% 0.01 280)" stroke-width="3" stroke-linecap="round">
+    <path d="M22 20 L36 31"/><path d="M50 16 L54 28"/><path d="M106 16 L96 29"/>
+    <path d="M110 46 L96 50"/><path d="M110 82 L97 74"/><path d="M84 106 L80 94"/>
+    <path d="M20 88 L33 79"/><path d="M18 52 L32 54"/>
+  </g>
+  <!-- 对话气泡：尾巴突破分镜框（破格） -->
+  <path d="M34 44 Q31 38 39 37 Q64 33 90 37 Q97 38 95 45 L96 66 Q97 73 89 73 L56 75 L38 92 L44 74 L40 74 Q32 74 33 67 Z"
+        fill="oklch(100% 0 0)" stroke="oklch(22% 0.01 280)" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- 尾巴出框的延伸段，压在框线之上 -->
+  <path d="M50 74 L38 92 L33 118 L44 96" fill="oklch(100% 0 0)" stroke="oklch(22% 0.01 280)" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- 产品名 -->
+  <text x="64" y="63" text-anchor="middle" font-family="'Ma Shan Zheng','Noto Sans SC',serif"
+        font-weight="900" font-size="24" fill="oklch(22% 0.01 280)" letter-spacing="1">2CY</text>
+  <!-- 朱红闪光漫符：品牌色点睛 -->
+  <path d="M101 24 l2.5 6 6 2.5 -6 2.5 -2.5 6 -2.5 -6 -6 -2.5 6 -2.5 Z" fill="oklch(52% 0.185 30)"/>
 </svg>
