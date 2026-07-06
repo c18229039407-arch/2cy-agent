@@ -43,12 +43,12 @@ function readBody(req, limit = 10 * 1024 * 1024) {
     let size = 0; const chunks = [];
     req.on('data', (c) => {
       size += c.length;
-      if (size > limit) { reject(new Error('body too large')); req.destroy(); return; }
+      if (size > limit) { const e = new Error('body too large'); e.status = 413; reject(e); req.destroy(); return; }
       chunks.push(c);
     });
     req.on('end', () => {
       try { resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}); }
-      catch { reject(new Error('invalid json')); }
+      catch { const e = new Error('invalid json'); e.status = 400; reject(e); }
     });
     req.on('error', reject);
   });
@@ -380,7 +380,8 @@ async function execTool(name, input) {
       || /^::ffff:(127|10|192\.168|169\.254)/.test(host) // IPv4-mapped IPv6
       || /^\d+$/.test(host);              // 纯十进制 IP（如 2130706433）
     if (blocked) throw new Error('不允许访问内网地址');
-    const res = await fetch(u, { signal: AbortSignal.timeout(20_000), headers: { 'user-agent': 'Mozilla/5.0 2CYAgent/0.1' } });
+    const res = await fetch(u, { redirect: 'manual', signal: AbortSignal.timeout(20_000), headers: { 'user-agent': 'Mozilla/5.0 2CYAgent/0.1' } });
+    if (res.status >= 300 && res.status < 400) throw new Error('目标地址发生重定向，出于安全考虑已阻止');
     const html = await res.text();
     const text = html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -965,11 +966,18 @@ createServer(async (req, res) => {
     }
   }
   const url = new URL(req.url, `http://${HOST}:${PORT}`);
+  // CSRF 防护：写请求的 Origin 必须与 Host 同源（无 Origin 的本地工具请求放行）
+  if (url.pathname.startsWith('/api/') && req.method !== 'GET' && req.headers.origin) {
+    try {
+      const oHost = new URL(req.headers.origin).host;
+      if (oHost !== String(req.headers.host || '')) return send(res, 403, { error: '跨源写请求被拒绝' });
+    } catch { return send(res, 403, { error: '非法 Origin' }); }
+  }
   try {
     if (url.pathname.startsWith('/api/')) return await handleApi(req, res, url);
     return await handleStatic(req, res, url);
   } catch (e) {
-    return send(res, 500, { error: e.message || 'internal error' });
+    return send(res, e.status || 500, { error: e.message || 'internal error' });
   }
 }).listen(PORT, HOST, async () => {
   const url = `http://${LAN_MODE ? '127.0.0.1' : HOST}:${PORT}`;
@@ -983,6 +991,10 @@ createServer(async (req, res) => {
     console.log('配对码：' + code + '（首次访问输入一次即可）');
   }
   console.log('数据目录：' + DATA + '（对话、角色卡、API key 均只存本机）');
+  // 进程退出时清理所有 MCP 子进程，避免遗留孤儿进程
+  const shutdown = () => { for (const c of mcpClients.values()) { try { c.proc?.kill(); } catch {} } process.exit(0); };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
   // 自动打开浏览器（设 NO_OPEN=1 可关闭）
   if (!process.env.NO_OPEN) {
     const cmd = process.platform === 'darwin' ? `open ${url}`

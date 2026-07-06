@@ -79,3 +79,38 @@ test('配置：webSearch 与搜索 key 存取（key 只返回掩码）', async (
   assert.equal(st.webSearch, true, 'webSearch 已保存');
   assert.ok(!JSON.stringify(st).includes('tvly-secret-123456'), '明文搜索 key 不外泄');
 });
+
+test('安全：模型 API key 存入后只以掩码返回', async () => {
+  await fetch(base + '/api/config', { method: 'PUT', body: JSON.stringify({ apiKey: 'sk-supersecret-abcdef' }) });
+  const st = await fetch(base + '/api/state').then((x) => x.json());
+  assert.ok(!JSON.stringify(st).includes('sk-supersecret-abcdef'), '明文模型 key 不外泄');
+  assert.ok(st.maskedKey && st.maskedKey.includes('…'), '返回掩码形式');
+});
+
+test('安全：非本机模式下 API 无 Origin 校验拦截（本机请求放行）', async () => {
+  // 本机默认模式：同源写请求应正常放行（回归 Origin 校验不误伤本地）
+  const r = await fetch(base + '/api/memory', { method: 'PUT', body: JSON.stringify({ enabled: true }) });
+  assert.equal(r.status, 200, '本机写请求放行');
+});
+
+test('安全：跨源写请求被 Origin 校验拒绝', async () => {
+  const r = await fetch(base + '/api/memory', {
+    method: 'PUT',
+    headers: { origin: 'http://evil.example.com' },
+    body: JSON.stringify({ enabled: true }),
+  });
+  assert.equal(r.status, 403, '伪造 Origin 的写请求返回 403');
+});
+
+test('安全：MCP 添加需要名称和命令', async () => {
+  const r = await fetch(base + '/api/mcp', { method: 'POST', body: JSON.stringify({ name: '缺命令' }) });
+  assert.equal(r.status, 400, '缺 command 被拒');
+});
+
+test('健壮性：非法 JSON 请求体返回 4xx 而非崩溃', async () => {
+  const r = await fetch(base + '/api/config', { method: 'PUT', body: '{ this is not json' }).catch(() => ({ status: 0 }));
+  assert.ok(r.status >= 400 && r.status < 500, '非法 JSON 得到客户端错误');
+  // 服务应仍存活
+  const alive = await fetch(base + '/api/state');
+  assert.equal(alive.status, 200, '服务未因坏请求崩溃');
+});
