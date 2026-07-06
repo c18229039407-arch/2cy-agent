@@ -14,12 +14,17 @@
 
 ### 方式一：下载即用（推荐，不需要会 git）
 
-1. 点本页面右上角绿色的 **Code** 按钮 → **Download ZIP**，下载后解压；
+1. 直接下载最新版：**https://github.com/c18229039407-arch/2cy-agent/releases/latest/download/2cy-agent.zip**，解压；
 2. 双击启动脚本：
    - **Windows**：双击 `启动-Windows.bat`；
    - **macOS**：双击 `启动-Mac.command`（如果系统提示「无法验证开发者」，右键点击文件 → 选「打开」即可；若提示没有权限，先在终端里对项目目录执行 `chmod +x 启动-Mac.command`）；
    - **Linux**：终端执行 `bash start-linux.sh`；
 3. 浏览器会自动打开 http://127.0.0.1:2333 。
+
+### 安装成桌面应用（可选）
+
+- **Windows**：解压后双击 `安装-Windows.bat`——程序会安装到用户目录，桌面和开始菜单出现带 logo 的「2CY Agent」图标，以后双击图标即可启动；卸载只需删除安装文件夹和快捷方式。
+- **macOS**：解压后的文件夹里有一个 **2CY Agent.app**，双击即可启动（首次打开如提示「无法验证开发者」，右键点击 → 「打开」）。想放进启动台，把整个项目文件夹移到「应用程序」即可。
 
 ### 方式二：命令行
 

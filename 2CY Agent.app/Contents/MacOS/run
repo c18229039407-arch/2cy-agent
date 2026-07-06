@@ -1,0 +1,10 @@
+#!/bin/bash
+# .app 放在项目文件夹内，向上三级即项目根
+DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+cd "$DIR"
+if ! command -v node >/dev/null 2>&1; then
+  osascript -e 'display alert "需要 Node.js" message "请先到 nodejs.org 安装 Node.js 18 或更高版本，然后重新打开 2CY Agent。"' 2>/dev/null
+  open "https://nodejs.org/"
+  exit 1
+fi
+exec node "$DIR/server.mjs"
