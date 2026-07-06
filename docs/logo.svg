@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="2CY Agent logo">
+  <!-- 对话气泡：手绘感墨线，代表「对话」 -->
+  <path d="M20 24 Q15 17 24 15 Q62 9 104 14 Q113 15 111 25 L113 74 Q114 85 103 85 L54 87 L31 106 L36 87 L26 87 Q15 87 17 75 Z"
+        fill="oklch(100% 0 0)" stroke="oklch(22% 0.01 280)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- 朱红印章：轻微歪斜，像手工盖上去的 -->
+  <g transform="rotate(-3 64 51)">
+    <rect x="37" y="28" width="54" height="46" rx="5" fill="oklch(52% 0.185 30)"/>
+    <text x="64" y="61" text-anchor="middle" font-family="'Ma Shan Zheng','Noto Sans SC',serif"
+          font-weight="900" font-size="27" fill="oklch(100% 0 0)" letter-spacing="1">2CY</text>
+  </g>
+  <!-- 印章右下的小缺口：手作感细节 -->
+  <path d="M88 71 l4 4" stroke="oklch(100% 0 0)" stroke-width="3" transform="rotate(-3 64 51)"/>
+</svg>

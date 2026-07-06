@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2CY Agent</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20128%20128%22%20role%3D%22img%22%20aria-label%3D%222CY%20Agent%20logo%22%3E%20%20%20%3C%21--%20%E5%AF%B9%E8%AF%9D%E6%B0%94%E6%B3%A1%EF%BC%9A%E6%89%8B%E7%BB%98%E6%84%9F%E5%A2%A8%E7%BA%BF%EF%BC%8C%E4%BB%A3%E8%A1%A8%E3%80%8C%E5%AF%B9%E8%AF%9D%E3%80%8D%20--%3E%20%20%20%3Cpath%20d%3D%22M20%2024%20Q15%2017%2024%2015%20Q62%209%20104%2014%20Q113%2015%20111%2025%20L113%2074%20Q114%2085%20103%2085%20L54%2087%20L31%20106%20L36%2087%20L26%2087%20Q15%2087%2017%2075%20Z%22%20%20%20%20%20%20%20%20%20fill%3D%22oklch%28100%25%200%200%29%22%20stroke%3D%22oklch%2822%25%200.01%20280%29%22%20stroke-width%3D%225%22%20stroke-linejoin%3D%22round%22/%3E%20%20%20%3C%21--%20%E6%9C%B1%E7%BA%A2%E5%8D%B0%E7%AB%A0%EF%BC%9A%E8%BD%BB%E5%BE%AE%E6%AD%AA%E6%96%9C%EF%BC%8C%E5%83%8F%E6%89%8B%E5%B7%A5%E7%9B%96%E4%B8%8A%E5%8E%BB%E7%9A%84%20--%3E%20%20%20%3Cg%20transform%3D%22rotate%28-3%2064%2051%29%22%3E%20%20%20%20%20%3Crect%20x%3D%2237%22%20y%3D%2228%22%20width%3D%2254%22%20height%3D%2246%22%20rx%3D%225%22%20fill%3D%22oklch%2852%25%200.185%2030%29%22/%3E%20%20%20%20%20%3Ctext%20x%3D%2264%22%20y%3D%2261%22%20text-anchor%3D%22middle%22%20font-family%3D%22%27Ma%20Shan%20Zheng%27%2C%27Noto%20Sans%20SC%27%2Cserif%22%20%20%20%20%20%20%20%20%20%20%20font-weight%3D%22900%22%20font-size%3D%2227%22%20fill%3D%22oklch%28100%25%200%200%29%22%20letter-spacing%3D%221%22%3E2CY%3C/text%3E%20%20%20%3C/g%3E%20%20%20%3C%21--%20%E5%8D%B0%E7%AB%A0%E5%8F%B3%E4%B8%8B%E7%9A%84%E5%B0%8F%E7%BC%BA%E5%8F%A3%EF%BC%9A%E6%89%8B%E4%BD%9C%E6%84%9F%E7%BB%86%E8%8A%82%20--%3E%20%20%20%3Cpath%20d%3D%22M88%2071%20l4%204%22%20stroke%3D%22oklch%28100%25%200%200%29%22%20stroke-width%3D%223%22%20transform%3D%22rotate%28-3%2064%2051%29%22/%3E%20%3C/svg%3E%20">
+  <title>2CY Agent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;700;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
@@ -495,7 +496,8 @@
 
         <section data-panel="about" hidden>
           <div class="about-block">
-            <p class="about-title">2CY AGENT <span>v0.8</span></p>
+            <p class="about-title">2CY AGENT <span>v0.9</span></p>
+          <p id="updateNotice" class="sub" hidden></p>
             <p class="sub">开源、本地优先的二次元 Agent——上传一张图，让你喜欢的角色住进电脑。界面是一张日漫黑白线稿风的「作者原稿桌」。</p>
             <ul class="rail-list">
               <li><span class="k">已实现</span>BYOK 多提供商 · 角色卡 · 三种模式 · Agent 工具 · 记忆与画像（自动/手动沉淀） · 短期记忆前情提要 · 技能面板 · 联网搜索（原生 + Tavily） · MCP 扩展 · 自定义技能 · 转线稿 · 手机局域网接入</li>
@@ -724,6 +726,12 @@ function renderRail() {
     $('portraitBox').addEventListener('click', () => $('avatarFile').click());
     const lineartBtn = $('lineartBtn');
     if (lineartBtn) lineartBtn.addEventListener('click', convertToLineart);
+    const exportBtn = $('exportCardBtn');
+    if (exportBtn) exportBtn.addEventListener('click', exportCard);
+    const importBtn = $('importCardBtn');
+    if (importBtn) importBtn.addEventListener('click', () => $('importCardFile').click());
+    const importFile = $('importCardFile');
+    if (importFile) importFile.addEventListener('change', () => { if (importFile.files[0]) importCard(importFile.files[0]); importFile.value = ''; });
     $('avatarFile').addEventListener('change', onAvatarPick);
     $('editCardBtn').addEventListener('click', () => renderCardEditor(card));
   }
@@ -1042,6 +1050,36 @@ $('sessionSearch').addEventListener('input', () => { sessionQuery = $('sessionSe
 $('wsEntryBtn').addEventListener('click', () => { $('settingsBtn').click(); switchTab('workspace'); $('mokuji').classList.remove('is-open'); });
 $('mcpEntryBtn').addEventListener('click', () => { $('settingsBtn').click(); switchTab('mcp'); $('mokuji').classList.remove('is-open'); });
 
+// ---------- 角色卡导入导出（v0.9）：去中心化共享，一个 JSON 文件走天下 ----------
+async function exportCard() {
+  const card = state.character || {};
+  if (!card.name) return;
+  const out = { format: '2cy-card', version: 1, name: card.name, source: card.source || '', personality: card.personality || '', quirk: card.quirk || '', speechStyle: card.speechStyle || '', bond: card.bond || '' };
+  if (card.avatarMime) {
+    try {
+      const blob = await fetch('/api/avatar?t=' + Date.now()).then((r) => r.blob());
+      out.avatar = await new Promise((ok) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(blob); });
+    } catch {}
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
+  a.download = card.name + '.2cy.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+async function importCard(file) {
+  try {
+    const data = JSON.parse(await file.text());
+    if (data.format !== '2cy-card' || !data.name) throw new Error('不是有效的 2CY 角色卡文件');
+    if (state.character?.name && !confirm(`导入「${data.name}」会覆盖当前角色「${state.character.name}」，继续？`)) return;
+    await api('/api/character', { method: 'PUT', body: JSON.stringify({ name: data.name, source: data.source, personality: data.personality, quirk: data.quirk, speechStyle: data.speechStyle, bond: data.bond }) });
+    if (data.avatar && /^data:image\/(png|jpeg|webp);base64,/.test(data.avatar)) {
+      await api('/api/avatar', { method: 'POST', body: JSON.stringify({ dataUrl: data.avatar }) });
+    }
+    await loadState();
+  } catch (e) { alert('导入失败：' + e.message); }
+}
+
 // ---------- 转线稿（v0.8）：浏览器端 Sobel 边缘检测，零依赖、CPU 瞬时 ----------
 async function convertToLineart() {
   const btn = $('lineartBtn');
@@ -1189,6 +1227,25 @@ async function loadSkills() {
   renderSkills();
 }
 renderSkills();
+
+// ---------- 更新检查（v0.9）：GitHub Releases 即更新服务器 ----------
+const APP_VERSION = '0.9.0';
+async function checkUpdate() {
+  try {
+    const r = await fetch('https://api.github.com/repos/c18229039407-arch/2cy-agent/releases/latest', { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return;
+    const d = await r.json();
+    const latest = String(d.tag_name || '').replace(/^v/, '');
+    const cur = APP_VERSION.split('.').map(Number), nxt = latest.split('.').map(Number);
+    const newer = nxt[0] > cur[0] || (nxt[0] === cur[0] && nxt[1] > cur[1]) || (nxt[0] === cur[0] && nxt[1] === cur[1] && (nxt[2] || 0) > (cur[2] || 0));
+    if (newer) {
+      const n = $('updateNotice');
+      n.hidden = false;
+      n.innerHTML = '有新版本 v' + esc(latest) + ' —— <a href="' + esc(d.html_url) + '" target="_blank" rel="noopener">去下载</a>（下载解压覆盖即可，data/ 目录里的数据不受影响）';
+    }
+  } catch { /* 离线或超时则静默 */ }
+}
+checkUpdate();
 
 // ---------- 启动 ----------
 (async () => { await loadState(); await loadSessions(); await loadMemory(); await loadSkills(); })();
