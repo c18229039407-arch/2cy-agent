@@ -63,6 +63,39 @@ node server.mjs   # 或 npm start
 
 零依赖测试套件（Node 内置 test runner）：`npm test` —— 覆盖 API 冒烟、路径穿越防护、请求体限制、密钥掩码等安全回归。
 
+## 技术栈
+
+**运行时与依赖**
+- Node.js 18+，原生 ES Modules；**零运行时依赖**——没有 `node_modules`，无需 `npm install`，下载即用
+- 数据层：本地 JSON 文件（`data/`，原子写入防损坏），无数据库、无云端
+
+**服务端（`server.mjs`）**
+- `node:http` 手写 HTTP 服务与路由，不用任何 Web 框架
+- `node:child_process`：MCP 服务子进程管理、跨平台自动打开浏览器
+- `node:crypto` / `node:fs/promises` / `node:os`：ID 生成、异步文件、局域网地址探测
+
+**对接的协议与 API**
+- Anthropic Messages API（原生 `tool_use`、adaptive thinking、`web_search` 服务端工具）
+- OpenAI 兼容 Chat Completions（function calling；覆盖 DeepSeek / Kimi / GLM / 通义 / 豆包 / OpenRouter / Ollama 等）
+- MCP（Model Context Protocol）：**零依赖手写的 stdio 传输 JSON-RPC 2.0 客户端**
+- Tavily Search API（第三方联网搜索兜底）、GitHub Releases API（应用内更新检查）
+
+**前端（`public/index.html`）**
+- 单文件原生 HTML/CSS/JS，无框架、无构建步骤
+- Canvas API：浏览器端 Sobel 边缘检测转黑白线稿（纯 CPU，零依赖）
+- 设计系统：手绘墨线风（规范见 `DESIGN.md`），oklch 色彩令牌，SVG 矢量 logo
+
+**安全工程**
+- SSRF 防护：内网/云元数据地址拦截、IPv6 与十进制 IP 绕过防御、禁跟随重定向
+- CSRF 防护：写请求 Origin 同源校验（全模式）
+- 局域网模式：非本机请求一律 6 位配对码鉴权（HttpOnly Cookie）
+- API key 只存本机（文件权限 600），界面仅显示掩码
+
+**测试与分发**
+- `node:test` 内置测试框架，12 项冒烟/安全测试（`npm test`），同样零依赖
+- GitHub Pages（产品主页）+ GitHub Releases（固定直链分发与版本管理）
+- 绿色安装：Windows 快捷方式脚本（PowerShell COM）、macOS 原生 `.app` 应用包、多尺寸 `.ico`/`.icns` 图标资产
+
 ## 隐私
 
 - **本地优先**：对话记录、角色卡、长期记忆、API key 全部存在本机 `./data/` 目录，服务只监听 `127.0.0.1`；
